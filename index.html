@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <title>Kana Quiz - Dark Mode & Fill All</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .kana-text { font-family: 'Noto Sans JP', sans-serif; }
+    input { -webkit-appearance: none; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+    .animate-shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes popIn { 0%{transform:scale(0.95);opacity:0} 100%{transform:scale(1);opacity:1} }
+    .pop-in { animation: popIn 0.2s ease-out both; }
+  </style>
+</head>
+<body class="bg-[#fcfcfc] dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased transition-colors duration-300">
+<div id="root"></div>
+<script type="text/babel">
+const STORAGE_KEY='kana_weakness_data_v2', SETTINGS_KEY='kana_settings_v1';
+const KANA_DEF = {
+  hiragana: {
+    main: [
+      {id:'a',label:'あ/a',items:[{q:'あ',a:['a']},{q:'い',a:['i']},{q:'う',a:['u']},{q:'え',a:['e']},{q:'お',a:['o']}]},
+      {id:'ka',label:'か/ka',items:[{q:'か',a:['ka']},{q:'き',a:['ki']},{q:'く',a:['ku']},{q:'け',a:['ke']},{q:'こ',a:['ko']}]},
+      {id:'sa',label:'さ/sa',items:[{q:'さ',a:['sa']},{q:'し',a:['shi','si']},{q:'す',a:['su']},{q:'せ',a:['se']},{q:'そ',a:['so']}]},
+      {id:'ta',label:'た/ta',items:[{q:'た',a:['ta']},{q:'ち',a:['chi','ti']},{q:'つ',a:['tsu','tu']},{q:'て',a:['te']},{q:'と',a:['to']}]},
+      {id:'na',label:'な/na',items:[{q:'な',a:['na']},{q:'に',a:['ni']},{q:'ぬ',a:['nu']},{q:'ね',a:['ne']},{q:'の',a:['no']}]},
+      {id:'ha',label:'は/ha',items:[{q:'は',a:['ha']},{q:'ひ',a:['hi']},{q:'ふ',a:['fu','hu']},{q:'へ',a:['he']},{q:'ほ',a:['ho']}]},
+      {id:'ma',label:'ま/ma',items:[{q:'ま',a:['ma']},{q:'み',a:['mi']},{q:'む',a:['mu']},{q:'め',a:['me']},{q:'も',a:['mo']}]},
+      {id:'ya',label:'や/ya',items:[{q:'や',a:['ya']},{q:'ゆ',a:['yu']},{q:'よ',a:['yo']}]},
+      {id:'ra',label:'ら/ra',items:[{q:'ら',a:['ra']},{q:'り',a:['ri']},{q:'る',a:['ru']},{q:'れ',a:['re']},{q:'ろ',a:['ro']}]},
+      {id:'wa',label:'わ/wa',items:[{q:'わ',a:['wa']},{q:'を',a:['wo']},{q:'ん',a:['n','nn']}]}
+    ],
+    dakuten: [
+      {id:'ga',label:'が/ga',items:[{q:'が',a:['ga']},{q:'ぎ',a:['gi']},{q:'ぐ',a:['gu']},{q:'げ',a:['ge']},{q:'ご',a:['go']}]},
+      {id:'za',label:'ざ/za',items:[{q:'ざ',a:['za']},{q:'じ',a:['ji','zi']},{q:'ず',a:['zu']},{q:'ぜ',a:['ze']},{q:'ぞ',a:['zo']}]},
+      {id:'da',label:'だ/da',items:[{q:'だ',a:['da']},{q:'ぢ',a:['ji','di']},{q:'づ',a:['zu','du']},{q:'で',a:['de']},{q:'ど',a:['do']}]},
+      {id:'ba',label:'ば/ba',items:[{q:'ば',a:['ba']},{q:'び',a:['bi']},{q:'ぶ',a:['bu']},{q:'べ',a:['be']},{q:'ぼ',a:['bo']}]},
+      {id:'pa',label:'ぱ/pa',items:[{q:'ぱ',a:['pa']},{q:'ぴ',a:['pi']},{q:'ぷ',a:['pu']},{q:'ぺ',a:['pe']},{q:'ぽ',a:['po']}]}
+    ],
+    combination: [
+      {id:'kya',label:'きゃ/kya',items:[{q:'きゃ',a:['kya']},{q:'きゅ',a:['kyu']},{q:'きょ',a:['kyo']}]},
+      {id:'sha',label:'しゃ/sha',items:[{q:'しゃ',a:['sha','sya']},{q:'しゅ',a:['shu','syu']},{q:'しょ',a:['sho','syo']}]},
+      {id:'cha',label:'ちゃ/cha',items:[{q:'ちゃ',a:['cha','tya','cya']},{q:'ちゅ',a:['chu','tyu','cyu']},{q:'ちょ',a:['cho','tyo','cyo']}]},
+      {id:'nya',label:'にゃ/nya',items:[{q:'にゃ',a:['nya']},{q:'にゅ',a:['nyu']},{q:'にょ',a:['nyo']}]},
+      {id:'hya',label:'ひゃ/hya',items:[{q:'ひゃ',a:['hya']},{q:'ひゅ',a:['hyu']},{q:'ひょ',a:['hyo']}]},
+      {id:'mya',label:'みゃ/mya',items:[{q:'みゃ',a:['mya']},{q:'みゅ',a:['myu']},{q:'みょ',a:['myo']}]},
+      {id:'rya',label:'りゃ/rya',items:[{q:'りゃ',a:['rya']},{q:'りゅ',a:['ryu']},{q:'りょ',a:['ryo']}]},
+      {id:'gya',label:'ぎゃ/gya',items:[{q:'ぎゃ',a:['gya']},{q:'ぎゅ',a:['gyu']},{q:'ぎょ',a:['gyo']}]},
+      {id:'ja',label:'じゃ/ja',items:[{q:'じゃ',a:['ja','zya']},{q:'じゅ',a:['ju','zyu']},{q:'じょ',a:['jo','zyo']}]},
+      {id:'bya',label:'びゃ/bya',items:[{q:'びゃ',a:['bya']},{q:'びゅ',a:['byu']},{q:'びょ',a:['byo']}]},
+      {id:'pya',label:'ぴゃ/pya',items:[{q:'ぴゃ',a:['pya']},{q:'ぴゅ',a:['pyu']},{q:'ぴょ',a:['pyo']}]}
+    ]
+  },
+  katakana: {
+    main: [
+      {id:'a',label:'ア/a',items:[{q:'ア',a:['a']},{q:'イ',a:['i']},{q:'ウ',a:['u']},{q:'エ',a:['e']},{q:'オ',a:['o']}]},
+      {id:'ka',label:'カ/ka',items:[{q:'カ',a:['ka']},{q:'キ',a:['ki']},{q:'ク',a:['ku']},{q:'ケ',a:['ke']},{q:'コ',a:['ko']}]},
+      {id:'sa',label:'サ/sa',items:[{q:'サ',a:['sa']},{q:'シ',a:['shi','si']},{q:'ス',a:['su']},{q:'セ',a:['se']},{q:'ソ',a:['so']}]},
+      {id:'ta',label:'タ/ta',items:[{q:'タ',a:['ta']},{q:'チ',a:['chi','ti']},{q:'ツ',a:['tsu','tu']},{q:'テ',a:['te']},{q:'ト',a:['to']}]},
+      {id:'na',label:'ナ/na',items:[{q:'ナ',a:['na']},{q:'ニ',a:['ni']},{q:'ヌ',a:['nu']},{q:'ネ',a:['ne']},{q:'ノ',a:['no']}]},
+      {id:'ha',label:'ハ/ha',items:[{q:'ハ',a:['ha']},{q:'ヒ',a:['hi']},{q:'フ',a:['fu','hu']},{q:'ヘ',a:['he']},{q:'ホ',a:['ho']}]},
+      {id:'ma',label:'マ/ma',items:[{q:'マ',a:['ma']},{q:'ミ',a:['mi']},{q:'ム',a:['mu']},{q:'メ',a:['me']},{q:'モ',a:['mo']}]},
+      {id:'ya',label:'ヤ/ya',items:[{q:'ヤ',a:['ya']},{q:'ユ',a:['yu']},{q:'ヨ',a:['yo']}]},
+      {id:'ra',label:'ラ/ra',items:[{q:'ラ',a:['ra']},{q:'リ',a:['ri']},{q:'ル',a:['ru']},{q:'レ',a:['re']},{q:'ロ',a:['ro']}]},
+      {id:'wa',label:'ワ/wa',items:[{q:'ワ',a:['wa']},{q:'ヲ',a:['wo']},{q:'ン',a:['n','nn']}]}
+    ],
+    dakuten: [
+      {id:'ga',label:'ガ/ga',items:[{q:'ガ',a:['ga']},{q:'ギ',a:['gi']},{q:'グ',a:['gu']},{q:'ゲ',a:['ge']},{q:'ゴ',a:['go']}]},
+      {id:'za',label:'ザ/za',items:[{q:'ザ',a:['za']},{q:'ジ',a:['ji','zi']},{q:'ズ',a:['zu']},{q:'ゼ',a:['ze']},{q:'ゾ',a:['zo']}]},
+      {id:'da',label:'ダ/da',items:[{q:'ダ',a:['da']},{q:'ヂ',a:['ji','di']},{q:'ヅ',a:['zu','du']},{q:'デ',a:['de']},{q:'ド',a:['do']}]},
+      {id:'ba',label:'バ/ba',items:[{q:'バ',a:['ba']},{q:'ビ',a:['bi']},{q:'ブ',a:['bu']},{q:'ベ',a:['be']},{q:'ボ',a:['bo']}]},
+      {id:'pa',label:'パ/pa',items:[{q:'パ',a:['pa']},{q:'ピ',a:['pi']},{q:'プ',a:['pu']},{q:'ペ',a:['pe']},{q:'ポ',a:['po']}]},
+      {id:'vu',label:'ヴ/vu',items:[{q:'ヴ',a:['vu']}]}
+    ],
+    combination: [
+      {id:'kya',label:'キャ/kya',items:[{q:'キャ',a:['kya']},{q:'キュ',a:['kyu']},{q:'キョ',a:['kyo']}]},
+      {id:'sha',label:'シャ/sha',items:[{q:'シャ',a:['sha','sya']},{q:'シュ',a:['shu','syu']},{q:'ショ',a:['sho','syo']}]},
+      {id:'cha',label:'チャ/cha',items:[{q:'チャ',a:['cha','tya','cya']},{q:'チュ',a:['chu','tyu','cyu']},{q:'チョ',a:['cho','tyo','cyo']}]},
+      {id:'nya',label:'ニャ/nya',items:[{q:'ニャ',a:['nya']},{q:'ニュ',a:['nyu']},{q:'ニョ',a:['nyo']}]},
+      {id:'hya',label:'ヒャ/hya',items:[{q:'ヒャ',a:['hya']},{q:'ヒュ',a:['hyu']},{q:'ヒョ',a:['hyo']}]},
+      {id:'mya',label:'ミャ/mya',items:[{q:'ミャ',a:['mya']},{q:'ミュ',a:['myu']},{q:'ミョ',a:['myo']}]},
+      {id:'rya',label:'リャ/rya',items:[{q:'リャ',a:['rya']},{q:'リュ',a:['ryu']},{q:'リョ',a:['ryo']}]},
+      {id:'gya',label:'ギャ/gya',items:[{q:'ギャ',a:['gya']},{q:'ギュ',a:['gyu']},{q:'ギョ',a:['gyo']}]},
+      {id:'ja',label:'ジャ/ja',items:[{q:'ジャ',a:['ja','zya']},{q:'ジュ',a:['ju','zyu']},{q:'ジョ',a:['jo','zyo']}]},
+      {id:'bya',label:'ビャ/bya',items:[{q:'ビャ',a:['bya']},{q:'ビュ',a:['byu']},{q:'ビョ',a:['byo']}]},
+      {id:'pya',label:'ピャ/pya',items:[{q:'ピャ',a:['pya']},{q:'ピュ',a:['pyu']},{q:'ピョ',a:['pyo']}]}
+    ]
+  }
+};
+
+const generateKanaList = () => {
+  const list = [];
+  ['hiragana','katakana'].forEach(alp => {
+    ['main','dakuten','combination'].forEach(cat => {
+      if(KANA_DEF[alp][cat]) KANA_DEF[alp][cat].forEach(g => {
+        g.items.forEach(item => list.push({ id:`${alp}_${item.q}`, alphabet:alp, category:cat, groupId:g.id, question:item.q, answer:item.a, mistakeCount:0 }));
+      });
+    });
+  });
+  return list;
+};
+const defaultKanaData = generateKanaList();
+
+const speakKana = (text, on) => {
+  if(!on || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text); u.lang='ja-JP'; u.rate=1.0; u.pitch=1.1;
+  window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+};
+const checkAns = (val, kana) => { if(!kana) return false; return Array.isArray(kana.answer) ? kana.answer.includes(val) : kana.answer===val; };
+
+const SelectButton = ({children,isSelected,onClick,className=''}) => (
+  <button onClick={onClick} className={`m-0.5 sm:m-1 px-1 py-1 sm:py-2.5 font-bold text-center text-[13px] sm:text-base cursor-pointer transition-all border-[3px] rounded-lg outline-none hover:ring-4 ring-green-400 dark:ring-green-500 min-h-[44px] flex items-center justify-center ${isSelected ? 'bg-[#3182ce] text-white border-[#3182ce] dark:bg-blue-600 dark:border-blue-600 shadow-md' : 'bg-white text-[#3182ce] border-[#3182ce] dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700'} ${className}`}>{children}</button>
+);
+
+const SettingsBar = ({settings,toggleSound,toggleTheme}) => (
+  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-3 z-50">
+    <button onClick={toggleSound} className={`p-2.5 rounded-full shadow-sm transition-all focus:outline-none ${settings.isSound?'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300':'bg-white text-gray-400 dark:bg-gray-800 dark:text-gray-500'} hover:scale-105 active:scale-95`}>
+      {settings.isSound ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg>}
+    </button>
+    <button onClick={toggleTheme} className="p-2.5 bg-white text-gray-700 dark:bg-gray-800 dark:text-yellow-400 rounded-full shadow-sm transition-all focus:outline-none hover:scale-105 active:scale-95">
+      {settings.isDark ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>}
+    </button>
+  </div>
+);
+
+function App() {
+  const [settings, setSettings] = React.useState(() => {
+    const s = localStorage.getItem(SETTINGS_KEY);
+    if(s) return JSON.parse(s);
+    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false };
+  });
+  React.useEffect(() => {
+    settings.isDark ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }, [settings]);
+  const toggleTheme = () => setSettings(s => ({...s, isDark:!s.isDark}));
+  const toggleSound = () => setSettings(s => ({...s, isSound:!s.isSound}));
+
+  const [kanaData, setKanaData] = React.useState(() => {
+    const sd = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kana_weakness_data');
+    if(sd) { try { const p=JSON.parse(sd); return defaultKanaData.map(d=>{const m=p.find(k=>k.question===d.question); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    return defaultKanaData;
+  });
+  React.useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(kanaData)); }, [kanaData]);
+
+  const [appState, setAppState] = React.useState('menu');
+  const [selectedAlphabet, setSelectedAlphabet] = React.useState('hiragana');
+  const [selectedGroups, setSelectedGroups] = React.useState({ hiragana: [], katakana: [] });
+
+  const activeKanaList = React.useMemo(() => {
+    const g = selectedGroups[selectedAlphabet]||[];
+    return kanaData.filter(k => k.alphabet===selectedAlphabet && g.includes(k.groupId));
+  }, [kanaData, selectedAlphabet, selectedGroups]);
+
+  // RANDOM QUIZ STATE
+  const [practiceMode, setPracticeMode] = React.useState('normal');
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [inputValue, setInputValue] = React.useState('');
+  const [status, setStatus] = React.useState('idle');
+  const [correctCount, setCorrectCount] = React.useState(0);
+  const inputRef = React.useRef('');
+  const statusRef = React.useRef('idle');
+  const currentKanaRef = React.useRef(null);
+
+  // FILL ALL STATE
+  const [fillCheckMode, setFillCheckMode] = React.useState('instant');
+  const [fillAnswers, setFillAnswers] = React.useState({});
+  const [fillResults, setFillResults] = React.useState({});
+  const [focusedCardIdx, setFocusedCardIdx] = React.useState(0);
+  const [fillFinished, setFillFinished] = React.useState(false);
+  const [shuffledFillList, setShuffledFillList] = React.useState([]);
+  const fillAnswersRef = React.useRef({});
+  const focusedCardIdxRef = React.useRef(0);
+
+  // Fisher-Yates shuffle
+  const shuffle = (arr) => { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+  const mistakesPool = activeKanaList.filter(k=>k.mistakeCount>0);
+  const activeQuizData = practiceMode==='practice_mistakes'&&mistakesPool.length>0 ? mistakesPool : activeKanaList;
+  let currentKana = activeQuizData.length>0 ? (activeQuizData[currentIndex]||activeQuizData[0]) : null;
+
+  React.useEffect(() => { currentKanaRef.current = currentKana; });
+  React.useEffect(() => { statusRef.current = status; }, [status]);
+  React.useEffect(() => { inputRef.current = inputValue; }, [inputValue]);
+  React.useEffect(() => { fillAnswersRef.current = fillAnswers; }, [fillAnswers]);
+  React.useEffect(() => { focusedCardIdxRef.current = focusedCardIdx; }, [focusedCardIdx]);
+
+  const goalCount = activeKanaList.length;
+  const progressPercent = Math.min((correctCount/Math.max(goalCount,1))*100,100);
+
+  React.useEffect(() => { if(appState==='quiz'&&status==='idle'&&currentKana) speakKana(currentKana.question,settings.isSound); }, [currentIndex,appState,practiceMode,status]);
+  React.useEffect(() => { if(practiceMode==='practice_mistakes'&&mistakesPool.length===0) setPracticeMode('normal'); }, [mistakesPool.length]);
+
+  const toggleGroup = (gid) => { const c=selectedGroups[selectedAlphabet]; setSelectedGroups({...selectedGroups,[selectedAlphabet]:c.includes(gid)?c.filter(i=>i!==gid):[...c,gid]}); };
+  const toggleAllCategory = (cat) => { const cg=KANA_DEF[selectedAlphabet][cat].map(g=>g.id); const c=selectedGroups[selectedAlphabet]; const all=cg.every(i=>c.includes(i)); setSelectedGroups({...selectedGroups,[selectedAlphabet]:all?c.filter(i=>!cg.includes(i)):Array.from(new Set([...c,...cg]))}); };
+  const toggleAllKana = () => { const ag=[]; ['main','dakuten','combination'].forEach(c=>KANA_DEF[selectedAlphabet][c].forEach(g=>ag.push(g.id))); const c=selectedGroups[selectedAlphabet]; setSelectedGroups({...selectedGroups,[selectedAlphabet]:c.length===ag.length?[]:ag}); };
+  const isAllSelected = () => { let t=0; ['main','dakuten','combination'].forEach(c=>t+=KANA_DEF[selectedAlphabet][c].length); return selectedGroups[selectedAlphabet].length===t; };
+  const isCategorySelected = (cat) => { const cg=KANA_DEF[selectedAlphabet][cat].map(g=>g.id); return cg.length>0&&cg.every(i=>selectedGroups[selectedAlphabet].includes(i)); };
+
+  const genNext = (pool) => { if(!pool||pool.length===0) return 0; let n; do{n=Math.floor(Math.random()*pool.length)}while(n===currentIndex&&pool.length>1); return n; };
+
+  const startRandomQuiz = () => {
+    if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
+    setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle');
+    setCurrentIndex(Math.floor(Math.random()*activeKanaList.length)); setAppState('quiz');
+  };
+  const startFillAll = () => {
+    if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
+    setShuffledFillList(shuffle(activeKanaList));
+    setFillAnswers({}); setFillResults({}); setFocusedCardIdx(0); setFillFinished(false); setAppState('fill');
+  };
+
+  const handleCorrectRandom = () => {
+    setStatus('correct'); setCorrectCount(p=>p+1);
+    let pool=activeQuizData;
+    if(currentKana&&currentKana.mistakeCount>0){ const nd=kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount-1}:k); setKanaData(nd); const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
+    setTimeout(()=>{ setInputValue(''); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genNext(pool)); setStatus('idle'); },250);
+  };
+  const handleErrorRandom = () => {
+    setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
+    if(currentKana){ setKanaData(kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
+    setTimeout(()=>{setStatus('idle');setInputValue('');},400);
+  };
+
+  // RANDOM QUIZ KEYDOWN
+  React.useEffect(() => {
+    if(appState!=='quiz') return;
+    const handler = (e) => {
+      if(statusRef.current!=='idle') return;
+      const kana=currentKanaRef.current; if(!kana) return;
+      if(e.key==='Backspace'){e.preventDefault(); setInputValue(p=>{const v=p.slice(0,-1);inputRef.current=v;return v;}); return;}
+      if(e.key==='Enter'){e.preventDefault(); if(inputRef.current.length>0&&!checkAns(inputRef.current,kana)) handleErrorRandom(); return;}
+      if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){e.preventDefault();e.stopPropagation(); const l=e.key.toLowerCase(); setInputValue(p=>{const v=p+l;inputRef.current=v;if(checkAns(v,kana))setTimeout(()=>handleCorrectRandom(),0);return v;});}
+    };
+    document.addEventListener('keydown',handler,true);
+    return ()=>document.removeEventListener('keydown',handler,true);
+  }, [appState,currentKana,kanaData,practiceMode,selectedAlphabet,selectedGroups,settings.isSound]);
+
+  const togglePracticeMode = () => {
+    if(practiceMode==='normal'&&mistakesPool.length>0){setPracticeMode('practice_mistakes');setCurrentIndex(genNext(mistakesPool));setStatus('idle');setInputValue('');}
+    else{setPracticeMode('normal');setCurrentIndex(genNext(activeKanaList));setStatus('idle');setInputValue('');}
+  };
+
+  // Auto-check a card when leaving it (instant mode)
+  const autoCheckCard = (idx) => {
+    if(fillCheckMode!=='instant') return;
+    const kana = activeKanaList[idx]; if(!kana) return;
+    const val = fillAnswersRef.current[kana.id]||'';
+    const res = fillResults[kana.id];
+    if(res==='correct'||res==='wrong') return; // already checked
+    if(val.length===0) return; // empty, skip
+    if(checkAns(val,kana)){
+      setFillResults(r=>({...r,[kana.id]:'correct'}));
+      if(kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+      speakKana(kana.question,settings.isSound);
+    } else {
+      setFillResults(r=>({...r,[kana.id]:'wrong'}));
+      setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+    }
+  };
+
+  const moveFocusTo = (newIdx) => {
+    const oldIdx = focusedCardIdxRef.current;
+    autoCheckCard(oldIdx);
+    setFocusedCardIdx(newIdx); focusedCardIdxRef.current=newIdx;
+  };
+
+  // FILL ALL KEYDOWN
+  React.useEffect(() => {
+    if(appState!=='fill'||fillFinished) return;
+    const handler = (e) => {
+      const idx = focusedCardIdxRef.current;
+      const kana = activeKanaList[idx]; if(!kana) return;
+      const ans = fillAnswersRef.current;
+      const curVal = ans[kana.id]||'';
+      const res = fillResults[kana.id];
+      // If card already resolved, allow navigation only
+      if(fillCheckMode==='instant' && (res==='correct'||res==='wrong')) {
+        if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);}
+        return;
+      }
+      if(e.key==='Backspace'){e.preventDefault();
+        // If card was wrong, clear result to let user retry
+        if(fillCheckMode==='instant'&&res==='wrong') setFillResults(r=>({...r,[kana.id]:null}));
+        const nv=curVal.slice(0,-1);const na={...ans,[kana.id]:nv};setFillAnswers(na);fillAnswersRef.current=na;return;
+      }
+      if(e.key==='Tab'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);return;}
+      if(e.key==='Enter'){
+        e.preventDefault();
+        if(fillCheckMode==='instant') { autoCheckCard(idx); const ni=Math.min(idx+1,activeKanaList.length-1); setTimeout(()=>moveFocusTo(ni),200); }
+        return;
+      }
+      if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){
+        e.preventDefault();e.stopPropagation();
+        // Clear wrong state if retrying
+        if(fillCheckMode==='instant'&&res==='wrong') setFillResults(r=>({...r,[kana.id]:null}));
+        const nv=curVal+e.key.toLowerCase();
+        const na={...ans,[kana.id]:nv};setFillAnswers(na);fillAnswersRef.current=na;
+        if(fillCheckMode==='instant'&&checkAns(nv,kana)){
+          setFillResults(r=>({...r,[kana.id]:'correct'}));
+          if(kana&&kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+          speakKana(kana.question,settings.isSound);
+          setTimeout(()=>{const ni=Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);},300);
+        }
+      }
+    };
+    document.addEventListener('keydown',handler,true);
+    return ()=>document.removeEventListener('keydown',handler,true);
+  }, [appState,fillCheckMode,fillFinished,activeKanaList,fillResults,settings.isSound]);
+
+  const handleFinishAll = () => {
+    const results = {};
+    activeKanaList.forEach(kana => {
+      const val = fillAnswers[kana.id]||'';
+      if(checkAns(val,kana)) { results[kana.id]='correct'; if(kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k)); }
+      else { results[kana.id]='wrong'; setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
+    });
+    setFillResults(results); setFillFinished(true);
+  };
+
+  const backToMenu = () => { setAppState('menu'); if('speechSynthesis' in window) window.speechSynthesis.cancel(); };
+
+  // ===================== RENDER =====================
+
+  // --- MENU ---
+  if(appState==='menu') {
+    return (
+      <div className="min-h-screen flex flex-col items-center px-4 py-16 sm:p-8">
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-6 tracking-tight">Kana Select</h1>
+        <div className="flex w-full max-w-5xl gap-2 mt-2 sm:mt-6 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
+          <SelectButton isSelected={selectedAlphabet==='hiragana'} onClick={()=>setSelectedAlphabet('hiragana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Hiragana (ひらがな)</SelectButton>
+          <SelectButton isSelected={selectedAlphabet==='katakana'} onClick={()=>setSelectedAlphabet('katakana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Katakana (カタカナ)</SelectButton>
+        </div>
+        <div className="w-full max-w-5xl mt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
+          <SelectButton isSelected={isAllSelected()} onClick={toggleAllKana} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">Chọn Toàn Bộ / Bỏ Chọn</SelectButton>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mt-8">
+          {['main','dakuten','combination'].map(cat => (
+            <div key={cat} className="flex flex-col bg-white dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center dark:text-gray-200">{cat==='main'?'Main Kana':cat==='dakuten'?'Dakuten Kana':'Combo Kana'}</h2>
+              <SelectButton isSelected={isCategorySelected(cat)} onClick={()=>toggleAllCategory(cat)} className="!mb-4 !border-dashed">All {cat==='main'?'Main':cat==='dakuten'?'Dakuten':'Combo'} Kana</SelectButton>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {KANA_DEF[selectedAlphabet][cat].map(g => <SelectButton key={g.id} isSelected={selectedGroups[selectedAlphabet].includes(g.id)} onClick={()=>toggleGroup(g.id)}>{g.label}</SelectButton>)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="w-full max-w-lg flex flex-col sm:flex-row gap-4 mt-10 sm:mt-12 px-2">
+          <button onClick={startRandomQuiz} className="flex-1 bg-[#3182ce] text-white rounded-2xl px-6 py-4 font-extrabold text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center">🎲 Random Quiz</button>
+          <button onClick={startFillAll} className="flex-1 bg-emerald-500 text-white rounded-2xl px-6 py-4 font-extrabold text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center">📝 Điền Hết</button>
+        </div>
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-3 text-center">Chọn hàng chữ rồi bấm một trong hai chế độ</p>
+      </div>
+    );
+  }
+
+  // --- RANDOM QUIZ ---
+  if(appState==='quiz') {
+    let iBorder="border-gray-200 dark:border-gray-700 dark:bg-gray-800", tClass="text-gray-800 dark:text-white", iAnim="", cBorder="border-gray-100 dark:border-gray-700";
+    if(status==='correct'){iBorder="border-green-500 bg-green-50 dark:bg-green-900/30";tClass="text-green-600 dark:text-green-400";cBorder="border-green-400 dark:border-green-500";}
+    else if(status==='error'){iBorder="border-red-500 bg-red-50 dark:bg-red-900/30 text-red-500";tClass="text-red-500 dark:text-red-400";iAnim="animate-shake";cBorder="border-red-300 dark:border-red-700/50";}
+    if(!currentKana) return <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-500"><div>No Data</div><button onClick={backToMenu} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Menu</button></div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1}>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
+        <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-300 ease-out ${practiceMode==='practice_mistakes'?'bg-orange-400':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width:`${practiceMode==='practice_mistakes'?100:progressPercent}%`}}></div></div>
+        <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center">
+          <button onClick={togglePracticeMode} disabled={practiceMode==='normal'&&mistakesPool.length===0} className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all border ${practiceMode==='practice_mistakes'?'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800':mistakesPool.length>0?'text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm':'text-gray-300 dark:text-gray-600 border-transparent opacity-50'}`}>
+            {practiceMode==='practice_mistakes'?'🎯 Sửa Lỗi':`Ôn tập ${mistakesPool.length} Lỗi`}
+          </button>
+          <span className={`px-2 py-1 rounded-full bg-gray-100/50 dark:bg-gray-800/50 ${practiceMode==='practice_mistakes'?'text-orange-500':'text-gray-400 dark:text-gray-500'} ${status==='correct'?'!text-blue-500 font-bold':''}`}>{practiceMode==='practice_mistakes'?`${mistakesPool.length} Cards`:`${correctCount} / ${goalCount}`}</span>
+        </div>
+        <div className="w-full max-w-[320px] flex flex-col items-center mt-20 sm:mt-16">
+          <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex flex-col items-center justify-center mb-6 sm:mb-10 transition-all duration-200 relative ${cBorder} ${status==='correct'?'scale-[1.03] shadow-lg shadow-green-100/50 dark:shadow-none':'hover:scale-[1.01]'}`}>
+            {currentKana.mistakeCount>0&&practiceMode==='normal'&&<div className="absolute top-5 right-5 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800">{currentKana.mistakeCount} Lỗi</div>}
+            <span className="text-[140px] sm:text-[160px] leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm">{currentKana.question}</span>
+          </div>
+          <div className={`w-full relative ${iAnim} px-2 sm:px-0`}>
+            <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${iBorder} ${tClass}`}>
+              {inputValue||<span className="font-normal text-gray-300 dark:text-gray-500">Romaji?</span>}
+            </div>
+            <div className="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">Gõ phím trực tiếp &#8226; Unikey không ảnh hưởng</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- FILL ALL ---
+  if(appState==='fill') {
+    const correctCnt = Object.values(fillResults).filter(r=>r==='correct').length;
+    const wrongCnt = Object.values(fillResults).filter(r=>r==='wrong').length;
+    return (
+      <div className="min-h-screen flex flex-col items-center px-3 sm:px-6 py-4 sm:py-8 relative">
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
+        <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
+
+        <h2 className="text-xl sm:text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-12 sm:mt-4 mb-2">Điền Romaji cho các chữ Kana</h2>
+
+        {!fillFinished && (
+          <div className="flex gap-2 mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            <button onClick={()=>{setFillCheckMode('instant');setFillResults({});setFillAnswers({});}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='instant'?'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>Check Ngay</button>
+            <button onClick={()=>{setFillCheckMode('finish');setFillResults({});setFillAnswers({});}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='finish'?'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>Điền Xong Check</button>
+          </div>
+        )}
+
+        {fillFinished && (
+          <div className="mb-4 text-center pop-in">
+            <span className="text-green-500 font-bold text-lg mr-4">✓ {correctCnt} Đúng</span>
+            <span className="text-red-500 font-bold text-lg">✗ {wrongCnt} Sai</span>
+            <div className="text-gray-400 dark:text-gray-500 text-sm mt-1">Tổng: {activeKanaList.length} chữ &#8226; Tỷ lệ: {Math.round(correctCnt/Math.max(activeKanaList.length,1)*100)}%</div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3 w-full max-w-6xl mb-8">
+          {activeKanaList.map((kana, idx) => {
+            const val = fillAnswers[kana.id]||'';
+            const res = fillResults[kana.id];
+            const isFocused = idx===focusedCardIdx && !fillFinished;
+            let cardBg = 'bg-[#3182ce] dark:bg-blue-700';
+            let inputBg = 'bg-white dark:bg-gray-700';
+            let inputText = 'text-gray-800 dark:text-white';
+            if(res==='correct'){cardBg='bg-green-500 dark:bg-green-600';inputBg='bg-green-50 dark:bg-green-900/50';inputText='text-green-700 dark:text-green-300';}
+            else if(res==='wrong'){cardBg='bg-red-500 dark:bg-red-600';inputBg='bg-red-50 dark:bg-red-900/50';inputText='text-red-600 dark:text-red-300';}
+            return (
+              <div key={kana.id} onClick={()=>{if(!fillFinished){moveFocusTo(idx);}}} className={`flex flex-col items-center rounded-xl overflow-hidden cursor-pointer transition-all shadow-sm ${cardBg} ${isFocused?'ring-4 ring-yellow-400 dark:ring-yellow-300 scale-105':''} ${res==='wrong'?'animate-shake':''}`}>
+                <div className="py-3 sm:py-4 flex items-center justify-center w-full">
+                  <span className="text-3xl sm:text-4xl text-white kana-text font-bold select-none drop-shadow">{kana.question}</span>
+                </div>
+                <div className={`w-full px-1 pb-2 flex flex-col items-center`}>
+                  <div className={`w-full text-center text-base sm:text-lg font-semibold py-1.5 sm:py-2 rounded-lg min-h-[36px] flex items-center justify-center ${inputBg} ${inputText}`}>
+                    {val || (isFocused ? <span className="animate-pulse text-gray-400">|</span> : '')}
+                  </div>
+                  {fillFinished && res==='wrong' && <div className="text-[11px] text-white/80 mt-1 font-bold">{Array.isArray(kana.answer)?kana.answer[0]:kana.answer}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {!fillFinished && fillCheckMode==='finish' && (
+          <button onClick={handleFinishAll} className="bg-emerald-500 text-white rounded-2xl px-10 py-4 font-extrabold text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none mb-8">✅ Finish Quiz</button>
+        )}
+        {fillFinished && (
+          <div className="flex gap-4 mb-8">
+            <button onClick={()=>{setFillAnswers({});setFillResults({});setFillFinished(false);setFocusedCardIdx(0);focusedCardIdxRef.current=0;}} className="bg-[#3182ce] text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-blue-700 active:scale-95 transition-all">🔄 Làm Lại</button>
+            <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all">Menu</button>
+          </div>
+        )}
+        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">Bấm vào thẻ hoặc dùng Tab để chọn &#8226; Gõ phím trực tiếp</p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(p){super(p);this.state={hasError:false,err:''};}
+  static getDerivedStateFromError(e){return{hasError:true,err:e.toString()};}
+  render(){if(this.state.hasError) return <div className="p-8 text-red-500 min-h-screen"><h1 className="text-2xl font-bold mb-4">App Crashed</h1><div className="p-4 bg-gray-100 rounded font-mono text-sm mt-4">{this.state.err}</div><button onClick={()=>window.location.reload()} className="mt-8 px-6 py-2 bg-blue-500 text-white rounded">Reload</button></div>; return this.props.children;}
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App/></ErrorBoundary>);
+</script>
+</body>
+</html>
