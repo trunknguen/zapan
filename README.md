@@ -1,2 +1,2 @@
 # zapan
-hoc tieng nhat cung toi nhe
+hoc tieng nhat cung trunk nhe
