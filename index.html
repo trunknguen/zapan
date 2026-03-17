@@ -515,6 +515,166 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
   );
 }
 
+function SingleCharCanvas({ char, showGuide, addClearRef }) {
+  const canvasRef = React.useRef(null);
+  const isDrawing = React.useRef(false);
+
+  React.useEffect(() => {
+    addClearRef(() => {
+      const cvs = canvasRef.current;
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+      }
+    });
+  }, [addClearRef]);
+
+  const startDraw = (e) => {
+    isDrawing.current = true;
+    const cvs = canvasRef.current;
+    if(!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const rect = cvs.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = cvs.width / rect.width;
+    const scaleY = cvs.height / rect.height;
+    ctx.beginPath();
+    ctx.moveTo(x * scaleX, y * scaleY);
+    if(e.cancelable) e.preventDefault();
+  };
+
+  const draw = (e) => {
+    if(!isDrawing.current) return;
+    const cvs = canvasRef.current;
+    if(!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const rect = cvs.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const scaleX = cvs.width / rect.width;
+    const scaleY = cvs.height / rect.height;
+    const isDark = document.documentElement.classList.contains('dark');
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // Use dynamic stroke style so it adapts to dark theme
+    ctx.strokeStyle = isDark ? '#ffffff' : '#1f2937';
+    ctx.lineTo(x * scaleX, y * scaleY);
+    ctx.stroke();
+    if(e.cancelable) e.preventDefault();
+  };
+
+  const endDraw = () => { isDrawing.current = false; };
+
+  return (
+    <div className="relative w-full aspect-square bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-2 border-dashed border-[#3182ce] dark:border-blue-500 overflow-hidden shrink-0 touch-none">
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div className="w-full h-px border-t border-dashed border-gray-300 dark:border-gray-600 absolute"></div>
+        <div className="h-full w-px border-l border-dashed border-gray-300 dark:border-gray-600 absolute"></div>
+      </div>
+      <div className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 ${showGuide ? 'opacity-20 dark:opacity-30' : 'opacity-0'}`}>
+        <span className="text-[120px] sm:text-[200px] leading-none text-gray-800 dark:text-gray-200 kana-text font-normal select-none">{char}</span>
+      </div>
+      <canvas ref={canvasRef} width={400} height={400} className="w-full h-full cursor-crosshair relative z-10 block" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseOut={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+    </div>
+  );
+}
+
+function WritingPractice({ backToMenu, pool, settings }) {
+  const t = T[settings.lang] || T.vi;
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [showGuide, setShowGuide] = React.useState(true);
+  const clearFuncs = React.useRef({});
+  
+  React.useEffect(() => {
+    const wrapper = document.getElementById('writing_wrapper');
+    if(wrapper) wrapper.focus();
+  }, [currentIndex]);
+
+  const currentItem = pool[currentIndex];
+  const isVocab = currentItem?.type === 'vocab' || currentItem?.type === 'kanji';
+  const displayString = isVocab ? (currentItem.question || currentItem.kanji || currentItem.answer[0]) : (currentItem?.question || '');
+  const chars = displayString.split('');
+
+  const clearCanvas = () => {
+    Object.values(clearFuncs.current).forEach(f => f && f());
+  };
+
+  const nextWord = () => {
+    clearCanvas();
+    setCurrentIndex(p => (p + 1) % pool.length);
+  };
+
+  const prevWord = () => {
+    clearCanvas();
+    setCurrentIndex(p => (p - 1 + pool.length) % pool.length);
+  };
+
+  if(!currentItem) return <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-500"><div>No Data</div><button onClick={backToMenu} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Menu</button></div>;
+
+  const gridClass = chars.length === 1 ? 'grid-cols-1 max-w-sm' : 
+                    chars.length === 2 ? 'grid-cols-2 max-w-lg' : 
+                    chars.length <= 4 ? 'grid-cols-2 md:grid-cols-4 max-w-3xl' : 
+                    'grid-cols-3 md:grid-cols-5 max-w-5xl';
+
+  return (
+    <div id="writing_wrapper" className="min-h-screen flex flex-col items-center px-4 py-6 relative outline-none" tabIndex={0} onKeyDown={(e)=>{if(e.key==='ArrowRight'||e.key==='Enter') nextWord(); if(e.key==='ArrowLeft') prevWord();}}>
+      <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; {t.menu}</button>
+      
+      <h2 className="text-2xl sm:text-3xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-16 mb-2 flex items-center gap-3">
+        ✍️ Luyện Viết (Writing)
+      </h2>
+      <p className="text-sm text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
+        <span>Từ {currentIndex + 1} / {pool.length}</span>
+      </p>
+
+      {/* READING HINT */}
+      <div className="flex flex-col items-center mb-6">
+        <div className="text-xl sm:text-2xl font-bold bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-2xl shadow-sm border-2 border-dashed border-[#3182ce] dark:border-blue-500">
+          {isVocab ? (
+             <div className="flex flex-col items-center">
+               <span className="text-sm text-gray-500 dark:text-gray-400 font-normal mb-1">{settings.lang==='vi'?currentItem.meaning?.vi:currentItem.meaning?.en}</span>
+               <span className="text-[#3182ce] dark:text-blue-400">{currentItem.answer ? (Array.isArray(currentItem.answer) ? currentItem.answer[0] : currentItem.answer) : displayString}</span>
+             </div>
+          ) : (
+             <div className="flex items-center gap-2 text-[#3182ce] dark:text-blue-400">
+               Romaji: <span>{Array.isArray(currentItem.answer) ? currentItem.answer[0] : currentItem.answer}</span>
+             </div>
+          )}
+        </div>
+        {!showGuide && <div className="text-xs text-orange-500 dark:text-orange-400 font-bold mt-2 animate-pulse">Chế độ Thử Thách (Đã ẩn chữ)!</div>}
+      </div>
+
+      {/* CANVAS GRID CONTAINER */}
+      <div className={`w-full grid ${gridClass} gap-3 sm:gap-4 mb-6 transition-all`}>
+        {chars.map((char, i) => (
+          <SingleCharCanvas key={`${currentIndex}-${i}`} char={char} showGuide={showGuide} addClearRef={(f) => { clearFuncs.current[i] = f; }} />
+        ))}
+      </div>
+
+      {/* CONTROLS */}
+      <div className="flex gap-4 w-full max-w-md mb-6">
+        <button onClick={clearCanvas} className="flex-1 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-bold py-3 rounded-xl border border-red-200 dark:border-red-800 hover:bg-red-100 hover:scale-105 active:scale-95 transition-all shadow-sm flex justify-center items-center gap-2">
+          🗑️ Tẩy Xoá
+        </button>
+        <button onClick={() => setShowGuide(!showGuide)} className="flex-1 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 font-bold py-3 rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all shadow-sm flex justify-center items-center gap-2">
+          {showGuide ? '👁️ Ẩn nét mờ' : '👀 Hiện nét mờ'}
+        </button>
+      </div>
+
+      <div className="flex gap-4 w-full max-w-md mt-auto">
+        <button onClick={prevWord} className="flex-1 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 font-bold py-4 rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all shadow-md text-lg">
+          ← Trước
+        </button>
+        <button onClick={nextWord} className="flex-1 bg-[#3182ce] text-white font-bold py-4 rounded-2xl hover:bg-[#2b6cb0] active:scale-95 transition-all shadow-md text-lg">
+          Tiếp →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MatchGame({ backToMenu, pool, settings }) {
   const t = T[settings.lang] || T.vi;
   const PAIR_COUNT = Math.min(8, Math.floor(pool.length));
@@ -1335,8 +1495,11 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           <button onClick={startTimeAttack} className="bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-orange-500 hover:to-amber-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#9201;&#65039;</span> <span>{t.timeAttack}</span></button>
           <button onClick={startSurvival} className="bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#9876;&#65039;</span> <span>{t.survival}</span></button>
         </div>
-        <div className="w-full max-w-2xl px-2 mt-3">
-           <button onClick={startMatchGame} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl px-5 py-3.5 font-extrabold text-base shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
+        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-2 gap-3">
+           <button onClick={() => {if(activeKanaList.length===0){alert(t.selectMin);return;} setAppState('writing');}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-teal-600 hover:to-emerald-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
+              ✍️ Luyện Viết
+           </button>
+           <button onClick={startMatchGame} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
               &#127918; Match Game
            </button>
         </div>
@@ -1613,7 +1776,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           </div>
         )}
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3 w-full max-w-6xl mb-8">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 w-full max-w-6xl mb-8">
           {shuffledFillList.map((kana, idx) => {
             const val = fillAnswers[kana.id]||'';
             const res = fillResults[kana.id];
@@ -1632,13 +1795,13 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                   const na={...fillAnswers,[kana.id]:''};setFillAnswers(na);fillAnswersRef.current=na;
                 }
                 moveFocusTo(idx);
-              }} className={`flex flex-col items-center rounded-xl overflow-hidden transition-all shadow-sm ${res==='correct'?'cursor-default':'cursor-pointer'} ${cardBg} ${isFocused?'ring-4 ring-yellow-400 dark:ring-yellow-300 scale-105':''} ${res==='wrong'?'animate-shake':''}`}>
-                <div className="py-3 sm:py-4 flex items-center justify-center w-full">
-                  <span className="text-3xl sm:text-4xl text-white kana-text font-bold select-none drop-shadow">{kana.question}</span>
+              }} className={`flex flex-col items-center rounded-xl overflow-hidden transition-all shadow-sm ${res==='correct'?'cursor-default':'cursor-pointer'} ${cardBg} ${isFocused?'ring-4 ring-yellow-400 dark:ring-yellow-300 scale-105 z-10':''} ${res==='wrong'?'animate-shake':''}`}>
+                <div className="py-3 sm:py-4 flex items-center justify-center w-full px-2">
+                  <span className="text-3xl sm:text-4xl text-white kana-text font-bold select-none drop-shadow whitespace-nowrap">{kana.question}</span>
                 </div>
                 <div className={`w-full px-1 pb-2 flex flex-col items-center`}>
-                  <div className={`w-full text-center text-base sm:text-lg font-semibold py-1.5 sm:py-2 rounded-lg min-h-[36px] flex items-center justify-center ${inputBg} ${inputText}`}>
-                    {val || (isFocused ? <span className="animate-pulse text-gray-400">|</span> : '')}
+                  <div className={`w-full text-center text-base sm:text-lg font-semibold py-1.5 sm:py-2 rounded-lg min-h-[36px] flex items-center justify-center ${inputBg} ${inputText} overflow-hidden`}>
+                    <span className="truncate w-full px-1">{val || (isFocused ? <span className="animate-pulse text-gray-400">|</span> : '')}</span>
                   </div>
                   {fillFinished && res==='wrong' && <div className="text-[11px] text-white/80 mt-1 font-bold">{Array.isArray(kana.answer)?kana.answer[0]:kana.answer}</div>}
                 </div>
@@ -1667,6 +1830,10 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
 
   if (appState === 'matchgame') {
     return <MatchGame backToMenu={backToMenu} pool={activeKanaList} settings={settings} />;
+  }
+
+  if (appState === 'writing') {
+    return <WritingPractice backToMenu={backToMenu} pool={activeKanaList} settings={settings} />;
   }
 
   return null;
@@ -1743,7 +1910,11 @@ function LoginApp({ onLogin, onGuest, onNameUpdate }) {
     try {
       const resolvedEmail = await resolveEmail(loginId.trim());
       if (!resolvedEmail) { setError('Tên đăng nhập không tồn tại!'); setLoading(false); return; }
-      await fbAuth.sendPasswordResetEmail(resolvedEmail);
+      const actionCodeSettings = {
+        url: 'https://trunknguen.github.io/zapan/gd6/index.html', // Redirect URL
+        handleCodeInApp: false
+      };
+      await fbAuth.sendPasswordResetEmail(resolvedEmail, actionCodeSettings);
       setError('✅ Đã gửi link đổi mật khẩu! Kiểm tra hộp thư email.');
     } catch(err) {
       setError(err.message);
