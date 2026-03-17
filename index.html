@@ -1041,9 +1041,10 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       if(!p.lang) p.lang='vi'; 
       if(p.dailyStreak===undefined) p.dailyStreak = 0;
       if(p.autoNextWriting===undefined) p.autoNextWriting = true;
+      if(p.quizMode===undefined) p.quizMode = 'typing';
       return p; 
     }
-    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi', dailyStreak: 0, lastActiveDate: null, autoNextWriting: true };
+    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi', dailyStreak: 0, lastActiveDate: null, autoNextWriting: true, quizMode: 'typing' };
   });
   const t = T[settings.lang] || T.vi;
 
@@ -1132,6 +1133,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const [isDrawingMode, setIsDrawingMode] = React.useState(false);
   const [drawingChecked, setDrawingChecked] = React.useState(false);
   const [isDrawing, setIsDrawing] = React.useState(false);
+  const [multipleChoiceOptions, setMultipleChoiceOptions] = React.useState([]);
   const canvasRef = React.useRef(null);
   const inputRef = React.useRef('');
   const statusRef = React.useRef('idle');
@@ -1319,10 +1321,23 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const drawCanvas = (e) => { if(!isDrawing||drawingChecked) return; const ctx=canvasRef.current.getContext('2d'); const rect=canvasRef.current.getBoundingClientRect(); const x=(e.clientX||(e.touches&&e.touches[0].clientX))-rect.left; const y=(e.clientY||(e.touches&&e.touches[0].clientY))-rect.top; ctx.lineTo(x,y); ctx.strokeStyle=settings.isDark?'#e2e8f0':'#334155'; ctx.lineWidth=8; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(); };
   const stopDrawingCanvas = () => setIsDrawing(false);
 
+  const generateMultipleChoiceOptions = (kana, pool) => {
+    if(!kana || pool.length < 5) return []; // Fallback if too few words
+    const options = [kana];
+    const available = pool.filter(k => k.id !== kana.id && k.question !== kana.question);
+    const shuffledAvailable = shuffle(available);
+    for(let i=0; i<Math.min(4, shuffledAvailable.length); i++) {
+       options.push(shuffledAvailable[i]);
+    }
+    return shuffle(options);
+  };
+
   const startRandomQuiz = () => {
     if(activeKanaList.length===0){alert("Chon it nhat 1 hang Kana!");return;}
     setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle'); setDrawingChecked(false); clearCanvas();
-    setCurrentIndex(genWeightedNext(activeKanaList, -1)); setAppState('quiz');
+    const nextIdx = genWeightedNext(activeKanaList, -1);
+    setCurrentIndex(nextIdx); setAppState('quiz');
+    if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(activeKanaList[nextIdx] || activeKanaList[0], activeKanaList));
   };
   const startTimeAttack = () => {
     if(activeKanaList.length===0){alert("Chon it nhat 1 hang Kana!");return;}
@@ -1366,12 +1381,36 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       if(studyMode==='kana'){ const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
       else pool=nd;
     }
-    setTimeout(()=>{ setInputValue(''); setDrawingChecked(false); clearCanvas(); if(practiceMode==='practice_mistakes'&&pool.filter(k=>k.mistakeCount>0).length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
+    setTimeout(()=>{ 
+      setInputValue(''); setDrawingChecked(false); clearCanvas(); 
+      if(practiceMode==='practice_mistakes'&&pool.filter(k=>k.mistakeCount>0).length===0) {
+        setPracticeMode('normal'); 
+      } else {
+        const nextIdx = genWeightedNext(pool, currentIndex);
+        setCurrentIndex(nextIdx); 
+        if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(pool[nextIdx] || pool[0], pool));
+      }
+      setStatus('idle'); 
+    },250);
   };
   const handleErrorRandom = () => {
     setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
     if(currentKana){ setActiveData(prev=>(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false):k)); }
-    setTimeout(()=>{setStatus('idle');setInputValue('');setDrawingChecked(false);clearCanvas();},400);
+    setTimeout(()=>{
+       setStatus('idle');setInputValue('');setDrawingChecked(false);clearCanvas();
+       // Generate new options on mistake if MC, maybe keeping same options or reshuffling. Reshuffle for now:
+       if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(currentKana, activeQuizData));
+    },400);
+  };
+
+  const handleMultipleChoiceSelect = (selectedOption) => {
+    if (statusRef.current !== 'idle') return;
+    const kana = currentKanaRef.current; if (!kana) return;
+    if (selectedOption.id === kana.id) {
+       handleCorrectRandom();
+    } else {
+       handleErrorRandom();
+    }
   };
 
   // RANDOM QUIZ KEYDOWN
@@ -1807,8 +1846,20 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 </div>
               )}
             </div>
+          ) : settings.quizMode === 'mc' ? (
+            <div className={`w-full relative px-2 sm:px-0 mt-4`}>
+               <div className="flex flex-col gap-2.5 w-full">
+                 {multipleChoiceOptions.length > 0 ? multipleChoiceOptions.map((opt, i) => (
+                    <button key={i} onClick={() => handleMultipleChoiceSelect(opt)} className="w-full bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-2 border-gray-100 dark:border-gray-700 py-4 px-6 rounded-2xl shadow-sm text-center text-xl sm:text-2xl font-bold hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-[#3182ce] hover:text-[#3182ce] dark:hover:text-blue-400 active:scale-95 transition-all">
+                       {Array.isArray(opt.answer) ? opt.answer[0] : opt.answer}
+                    </button>
+                 )) : (
+                    <div className="text-gray-400 text-center mt-4">Không đủ từ vựng (cần ít nhất 5 từ)</div>
+                 )}
+               </div>
+            </div>
           ) : (
-            <div className={`w-full relative ${iAnim} px-2 sm:px-0`}>
+            <div className={`w-full relative ${iAnim} px-2 sm:px-0 mt-2`}>
               <div className={`w-full px-12 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text relative ${iBorder} ${tClass}`}>
                 <button onClick={(e)=>{e.stopPropagation();setShowVirtualKb(!showVirtualKb);}} className={`absolute right-3 sm:right-4 p-2 sm:p-2.5 rounded-xl transition-all z-10 ${showVirtualKb?'bg-[#3182ce] text-white shadow-md':'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700'}`} title="Virtual Keyboard">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 sm:w-7 sm:h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 10.5h.008v.008H6v-.008zm3 0h.008v.008H9v-.008zm3 0h.008v.008H12v-.008zm3 0h.008v.008H15v-.008zm3 0h.008v.008H18v-.008zm-9 3h.008v.008H9v-.008zm3 0h.008v.008H12v-.008zm3 0h.008v.008H15v-.008zm-3 3h.008v.008H12v-.008z" /></svg>
@@ -1828,6 +1879,30 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 </div>
               )}
             </div>
+          )}
+          
+          {/* Mode Toggle UI */}
+          {!isDrawingMode && (
+             <div className="w-full flex justify-center mt-6 z-10">
+                <div className="bg-gray-100 dark:bg-gray-800 p-1 flex gap-1 rounded-full shadow-inner border border-gray-200 dark:border-gray-700 w-full max-w-[280px]">
+                   <button 
+                      onClick={() => { setSettings({...settings, quizMode: 'typing'}); localStorage.setItem(SETTINGS_KEY, JSON.stringify({...settings, quizMode: 'typing'})); }} 
+                      className={`flex-1 py-2 text-sm font-bold rounded-full transition-all ${settings.quizMode!=='mc'?'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm':'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                   >
+                      ✍️ Gõ phím
+                   </button>
+                   <button 
+                      onClick={() => { 
+                         setSettings({...settings, quizMode: 'mc'}); 
+                         localStorage.setItem(SETTINGS_KEY, JSON.stringify({...settings, quizMode: 'mc'})); 
+                         if(activeQuizData.length>=5) setMultipleChoiceOptions(generateMultipleChoiceOptions(currentKanaRef.current, activeQuizData));
+                      }} 
+                      className={`flex-1 py-2 text-sm font-bold rounded-full transition-all ${settings.quizMode==='mc'?'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm':'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                   >
+                      🎯 Trắc nghiệm
+                   </button>
+                </div>
+             </div>
           )}
         </div>
       </div>
@@ -2353,8 +2428,8 @@ function App() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center pop-in">
-          <div className="text-5xl mb-4">🔄</div>
+        <div className="flex flex-col items-center justify-center gap-4 text-center pop-in">
+          <div className="w-12 h-12 border-4 border-[#3182ce]/20 border-t-[#3182ce] rounded-full animate-spin"></div>
           <div className="text-lg font-bold text-gray-500 dark:text-gray-400">Đang tải...</div>
         </div>
       </div>
