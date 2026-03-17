@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-  <title>Kana Quiz - Dark Mode & Fill All</title>
+  <title>làm tí za pan nì cùng chơn trunk kúc</title>
+  <meta property="og:title" content="làm tí za pan nì cùng chơn trunk kúc" />
+  <meta property="og:description" content="Học tiếng Nhật cùng nhau nào! 🇯🇵" />
+  <meta name="description" content="Học tiếng Nhật cùng nhau nào! 🇯🇵" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -191,8 +194,9 @@ const ALL_KANJI = { ...KANJI_N5, ...KANJI_N4 };
 
 const VOCAB_CATS = Object.keys(ALL_VOCAB);
 const KANJI_CATS = Object.keys(ALL_KANJI);
-const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
-const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
+const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0 };
+const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
+const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const defaultVocabData = genVocabList();
 const defaultKanjiData = genKanjiList();
 
@@ -201,13 +205,33 @@ const generateKanaList = () => {
   ['hiragana','katakana'].forEach(alp => {
     ['main','dakuten','combination'].forEach(cat => {
       if(KANA_DEF[alp][cat]) KANA_DEF[alp][cat].forEach(g => {
-        g.items.forEach(item => list.push({ id:`${alp}_${item.q}`, alphabet:alp, category:cat, groupId:g.id, question:item.q, answer:item.a, mistakeCount:0 }));
+        g.items.forEach(item => list.push({ id:`${alp}_${item.q}`, alphabet:alp, category:cat, groupId:g.id, question:item.q, answer:item.a, mistakeCount:0,...SRS_DEFAULT }));
       });
     });
   });
   return list;
 };
 const defaultKanaData = generateKanaList();
+
+// SRS Engine (SM-2 inspired)
+const srsUpdate = (card, isCorrect) => {
+  const now = Date.now();
+  let { interval, ease, nextReview } = card;
+  interval = interval || 0; ease = ease || 2.5; nextReview = nextReview || 0;
+  if (isCorrect) {
+    if (interval === 0) interval = 1;        // 1 minute
+    else if (interval === 1) interval = 10;  // 10 minutes
+    else if (interval < 60) interval = 60;   // 1 hour
+    else if (interval < 1440) interval = 1440; // 1 day
+    else interval = Math.round(interval * Math.min(ease, 4));
+    ease = Math.max(1.3, ease + 0.1);
+  } else {
+    interval = 1; // reset to 1 minute
+    ease = Math.max(1.3, ease - 0.2);
+  }
+  return { ...card, interval, ease, nextReview: now + interval * 60000 };
+};
+const isDue = (card) => !card.nextReview || Date.now() >= card.nextReview;
 
 const speakKana = (text, on) => {
   if(!on || !('speechSynthesis' in window)) return;
@@ -456,6 +480,173 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
   );
 }
 
+function MatchGame({ backToMenu, pool, settings }) {
+  const t = T[settings.lang] || T.vi;
+  const PAIR_COUNT = Math.min(8, Math.floor(pool.length));
+  const [cards, setCards] = React.useState([]);
+  const [selected, setSelected] = React.useState([]);
+  const [matched, setMatched] = React.useState([]);
+  const [timeLeft, setTimeLeft] = React.useState(60);
+  const [running, setRunning] = React.useState(false);
+  const [finished, setFinished] = React.useState(false);
+  const [score, setScore] = React.useState(0);
+  const [combo, setCombo] = React.useState(0);
+  const [wrongFlash, setWrongFlash] = React.useState([]);
+  const timerRef = React.useRef(null);
+
+  const shuffle = (arr) => { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+  const initGame = () => {
+    if (pool.length < 2) return;
+    const picked = shuffle(pool).slice(0, PAIR_COUNT);
+    const cardPairs = [];
+    picked.forEach((item, idx) => {
+      const isVocabOrKanji = item.type === 'vocab' || item.type === 'kanji';
+      const qLabel = item.question;
+      const aLabel = isVocabOrKanji ? (item.meaning ? (settings.lang==='vi' ? item.meaning.vi : item.meaning.en) : item.answer[0]) : item.answer[0];
+      cardPairs.push({ pairId: idx, text: qLabel, side: 'q', isJP: true });
+      cardPairs.push({ pairId: idx, text: aLabel, side: 'a', isJP: false });
+    });
+    setCards(shuffle(cardPairs));
+    setSelected([]);
+    setMatched([]);
+    setScore(0);
+    setCombo(0);
+    setTimeLeft(60);
+    setRunning(true);
+    setFinished(false);
+    setWrongFlash([]);
+  };
+
+  React.useEffect(() => { initGame(); }, []);
+
+  React.useEffect(() => {
+    if (!running) return;
+    if (timeLeft <= 0) { setRunning(false); setFinished(true); return; }
+    timerRef.current = setTimeout(() => setTimeLeft(p => p - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [running, timeLeft]);
+
+  React.useEffect(() => {
+    if (matched.length === PAIR_COUNT * 2 && running) {
+      setRunning(false);
+      setFinished(true);
+    }
+  }, [matched]);
+
+  const handleCardClick = (cardIdx) => {
+    if (!running || finished) return;
+    if (matched.includes(cardIdx)) return;
+    if (selected.includes(cardIdx)) return;
+    if (selected.length >= 2) return;
+
+    const newSel = [...selected, cardIdx];
+    setSelected(newSel);
+
+    if (newSel.length === 2) {
+      const c1 = cards[newSel[0]];
+      const c2 = cards[newSel[1]];
+      if (c1.pairId === c2.pairId && c1.side !== c2.side) {
+        // CORRECT match
+        const newCombo = combo + 1;
+        setCombo(newCombo);
+        setScore(s => s + 10 + (newCombo > 1 ? newCombo * 5 : 0));
+        setTimeout(() => {
+          setMatched(m => [...m, newSel[0], newSel[1]]);
+          setSelected([]);
+        }, 400);
+      } else {
+        // WRONG match
+        setCombo(0);
+        setWrongFlash(newSel);
+        setTimeLeft(p => Math.max(0, p - 3));
+        setTimeout(() => { setSelected([]); setWrongFlash([]); }, 600);
+      }
+    }
+  };
+
+  const matchedCount = Math.floor(matched.length / 2);
+  const pctComplete = (matchedCount / PAIR_COUNT) * 100;
+  const timerColor = timeLeft > 20 ? 'text-green-600 dark:text-green-400' : timeLeft > 10 ? 'text-yellow-500' : 'text-red-500';
+
+  if (finished) {
+    const allMatched = matched.length === PAIR_COUNT * 2;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8 sm:p-12 max-w-md w-full text-center pop-in border border-gray-100 dark:border-gray-700">
+          <div className="text-6xl mb-4">{allMatched ? '🎉' : '⏰'}</div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mb-2 text-gray-800 dark:text-white">{allMatched ? 'Hoàn Thành!' : 'Hết Giờ!'}</h2>
+          <p className="text-5xl font-black text-[#3182ce] dark:text-blue-400 my-4">{score}</p>
+          <p className="text-gray-500 dark:text-gray-400 font-bold mb-2">điểm • {matchedCount}/{PAIR_COUNT} cặp</p>
+          {allMatched && <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold mb-4">Thời gian còn lại: {timeLeft}s 🏆</p>}
+          <div className="flex gap-3 mt-6">
+            <button onClick={initGame} className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl px-5 py-3.5 font-extrabold shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all">🔄 Chơi Lại</button>
+            <button onClick={backToMenu} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-5 py-3.5 font-extrabold shadow-sm hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all">← Menu</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center px-3 py-4 sm:px-6 sm:py-8 relative">
+      <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
+
+      <div className="flex items-center gap-4 sm:gap-8 mt-14 sm:mt-6 mb-4">
+        <div className="text-center">
+          <span className={`text-4xl sm:text-5xl font-black ${timerColor}`}>{timeLeft}</span>
+          <p className="text-xs text-gray-400 font-bold mt-1">giây</p>
+        </div>
+        <div className="h-12 w-px bg-gray-200 dark:bg-gray-700"></div>
+        <div className="text-center">
+          <span className="text-4xl sm:text-5xl font-black text-[#3182ce] dark:text-blue-400">{score}</span>
+          <p className="text-xs text-gray-400 font-bold mt-1">điểm</p>
+        </div>
+        {combo > 1 && (
+          <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1.5 rounded-full font-extrabold text-sm shadow-lg animate-bounce">
+            🔥 x{combo}
+          </div>
+        )}
+      </div>
+
+      <div className="w-full max-w-2xl mb-3">
+        <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-500" style={{width: `${pctComplete}%`}}></div>
+        </div>
+        <p className="text-xs text-gray-400 text-right mt-1 font-bold">{matchedCount}/{PAIR_COUNT}</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 w-full max-w-2xl">
+        {cards.map((card, idx) => {
+          const isMatched = matched.includes(idx);
+          const isSelected = selected.includes(idx);
+          const isWrong = wrongFlash.includes(idx);
+          return (
+            <button
+              key={idx}
+              onClick={() => handleCardClick(idx)}
+              disabled={isMatched}
+              className={`
+                relative aspect-square rounded-xl sm:rounded-2xl font-bold text-sm sm:text-lg flex items-center justify-center
+                transition-all duration-200 outline-none border-2 shadow-sm
+                ${isMatched ? 'opacity-0 scale-75 pointer-events-none' : ''}
+                ${isSelected && !isWrong ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-500 scale-105 shadow-lg ring-2 ring-blue-300 dark:ring-blue-600' : ''}
+                ${isWrong ? 'bg-red-100 dark:bg-red-900/40 border-red-500 animate-shake' : ''}
+                ${!isSelected && !isMatched && !isWrong ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md active:scale-95 cursor-pointer' : ''}
+              `}
+            >
+              <span className={`${card.isJP ? 'kana-text text-lg sm:text-2xl' : 'text-xs sm:text-sm'} ${isSelected || isMatched ? 'text-[#3182ce] dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}>
+                {card.text}
+              </span>
+              {card.isJP && <span className="absolute top-1 right-1.5 text-[9px] text-blue-400 font-bold opacity-60">JP</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MainApp({ currentUser, onLogout }) {
   const STORAGE_KEY = `kana_weakness_data_v2_${currentUser}`;
   const SETTINGS_KEY = `kana_settings_v1_${currentUser}`;
@@ -590,6 +781,22 @@ function MainApp({ currentUser, onLogout }) {
   const genWeightedNext = (pool, curIdx) => {
     if(!pool||pool.length===0) return 0;
     if(pool.length===1) return 0;
+    // SRS: prioritize due items first
+    const dueItems = pool.map((k,i) => ({k,i})).filter(x => isDue(x.k));
+    if (dueItems.length > 0) {
+      // Pick from due items with mistake weighting
+      const weights = dueItems.map(x => 1 + (x.k.mistakeCount||0) * 3);
+      const total = weights.reduce((a,b)=>a+b,0);
+      let attempts = 0;
+      while(attempts < 20) {
+        let r = Math.random()*total, acc=0;
+        for(let j=0;j<dueItems.length;j++) { acc+=weights[j]; if(r<=acc) { if(dueItems[j].i !== curIdx || dueItems.length===1) return dueItems[j].i; break; } }
+        attempts++;
+      }
+      const pick = dueItems[Math.floor(Math.random()*dueItems.length)];
+      return pick.i;
+    }
+    // Fallback: normal weighted random
     const weights = pool.map(k => 1 + (k.mistakeCount||0) * 3);
     const total = weights.reduce((a,b) => a+b, 0);
     let attempts = 0;
@@ -635,16 +842,25 @@ function MainApp({ currentUser, onLogout }) {
     setShuffledFillList(shuffle(activeKanaList));
     setFillAnswers({}); setFillResults({}); setFocusedCardIdx(0); setFillFinished(false); setAppState('fill');
   };
+  const startMatchGame = () => {
+    if(activeKanaList.length<2){alert("Hãy chọn ít nhất 2 mục để chơi Match!");return;}
+    setAppState('matchgame');
+  };
 
   const handleCorrectRandom = () => {
     setStatus('correct'); setCorrectCount(p=>p+1);
     let pool=activeQuizData;
-    if(currentKana&&currentKana.mistakeCount>0){ const nd=kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount-1}:k); setActiveData(nd); const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
-    setTimeout(()=>{ setInputValue(''); setDrawingChecked(false); clearCanvas(); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
+    if(currentKana){ 
+      const nd=(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true):k);
+      setActiveData(()=>nd);
+      if(studyMode==='kana'){ const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
+      else pool=nd;
+    }
+    setTimeout(()=>{ setInputValue(''); setDrawingChecked(false); clearCanvas(); if(practiceMode==='practice_mistakes'&&pool.filter(k=>k.mistakeCount>0).length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
   };
   const handleErrorRandom = () => {
     setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
-    if(currentKana){ setActiveData(kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
+    if(currentKana){ setActiveData(prev=>(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false):k)); }
     setTimeout(()=>{setStatus('idle');setInputValue('');setDrawingChecked(false);clearCanvas();},400);
   };
 
@@ -872,6 +1088,11 @@ function MainApp({ currentUser, onLogout }) {
           <button onClick={startRandomQuiz} className="flex-1 bg-[#3182ce] text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center">&#127922; {t.random}</button>
           <button onClick={startFillAll} className="flex-1 bg-emerald-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center">&#128221; {t.fillAll}</button>
           <button onClick={startTimeAttack} className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-orange-600 hover:to-red-600 active:scale-95 transition-all outline-none text-center">&#9201;&#65039; {t.timeAttack}</button>
+        </div>
+        <div className="w-full max-w-xl px-2 mt-3">
+           <button onClick={startMatchGame} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl px-5 py-3.5 font-extrabold text-base shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
+              &#127918; Match Game
+           </button>
         </div>
         <div className="w-full max-w-xl px-2 mt-3 mb-4">
            <button onClick={()=>setAppState('stats')} className="w-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-3.5 font-bold text-base shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
@@ -1129,6 +1350,10 @@ function MainApp({ currentUser, onLogout }) {
 
   if (appState === 'stats') {
     return <StatsScreen backToMenu={backToMenu} kanaData={kanaData} vocabData={vocabData} kanjiData={kanjiData} />;
+  }
+
+  if (appState === 'matchgame') {
+    return <MatchGame backToMenu={backToMenu} pool={activeKanaList} settings={settings} />;
   }
 
   return null;
