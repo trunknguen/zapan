@@ -652,12 +652,13 @@ function MatchGame({ backToMenu, pool, settings }) {
   );
 }
 
-function MainApp({ currentUser, onLogout }) {
-  const STORAGE_KEY = `kana_weakness_data_v2_${currentUser}`;
-  const SETTINGS_KEY = `kana_settings_v1_${currentUser}`;
-  const HIGHSCORE_KEY = `kana_highscore_v1_${currentUser}`;
-  const VOCAB_KEY = `vocab_data_v1_${currentUser}`;
-  const KANJI_KEY = `kanji_data_v1_${currentUser}`;
+function MainApp({ currentUser, isGuest, onLogout }) {
+  const userKey = isGuest ? '__guest__' : currentUser;
+  const STORAGE_KEY = `kana_weakness_data_v2_${userKey}`;
+  const SETTINGS_KEY = `kana_settings_v1_${userKey}`;
+  const HIGHSCORE_KEY = `kana_highscore_v1_${userKey}`;
+  const VOCAB_KEY = `vocab_data_v1_${userKey}`;
+  const KANJI_KEY = `kanji_data_v1_${userKey}`;
 
   const [settings, setSettings] = React.useState(() => {
     const s = localStorage.getItem(SETTINGS_KEY);
@@ -892,18 +893,20 @@ function MainApp({ currentUser, onLogout }) {
         setTaHighScore(score); 
         localStorage.setItem(HIGHSCORE_KEY, score.toString()); 
         
-        // Update global leaderboard
-        try {
-           let lb = JSON.parse(localStorage.getItem('kana_global_leaderboard')) || [];
-           const idx = lb.findIndex(x => x.username === currentUser);
-           if (idx >= 0) {
-              if (score > lb[idx].score) lb[idx].score = score;
-           } else {
-              lb.push({username: currentUser, score});
-           }
-           lb.sort((a,b)=>b.score - a.score);
-           localStorage.setItem('kana_global_leaderboard', JSON.stringify(lb));
-        } catch(e){}
+        // Update global leaderboard (skip for guests)
+        if (!isGuest) {
+          try {
+             let lb = JSON.parse(localStorage.getItem('kana_global_leaderboard')) || [];
+             const idx = lb.findIndex(x => x.username === currentUser);
+             if (idx >= 0) {
+                if (score > lb[idx].score) lb[idx].score = score;
+             } else {
+                lb.push({username: currentUser, score});
+             }
+             lb.sort((a,b)=>b.score - a.score);
+             localStorage.setItem('kana_global_leaderboard', JSON.stringify(lb));
+          } catch(e){}
+        }
 
         setShowConfetti(true); setTimeout(()=>setShowConfetti(false),4000); 
       }
@@ -1046,7 +1049,7 @@ function MainApp({ currentUser, onLogout }) {
   if(appState==='menu') {
     return (
       <div className="min-h-screen flex flex-col items-center px-4 py-16 sm:p-8">
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={isGuest ? 'Kh\u00e1ch' : currentUser} onLogout={onLogout}/>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-4 tracking-tight">{studyMode==='kana'?t.selectTitle:studyMode==='vocab'?t.vocabTitle:t.kanjiTitle}</h1>
         <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6">
           {[['kana','tabKana'],['vocab','tabVocab'],['kanji','tabKanji']].map(([m,k])=>(
@@ -1122,7 +1125,7 @@ function MainApp({ currentUser, onLogout }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={(e) => { if (!isDrawingMode && !showVirtualKb) focusMobileInput(e); }}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={isGuest ? 'Kh\u00e1ch' : currentUser} onLogout={onLogout}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-300 ease-out ${practiceMode==='practice_mistakes'?'bg-orange-400':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width:`${practiceMode==='practice_mistakes'?100:progressPercent}%`}}></div></div>
         <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center z-20">
@@ -1364,7 +1367,7 @@ function MainApp({ currentUser, onLogout }) {
   return null;
 }
 
-function LoginApp({ onLogin }) {
+function LoginApp({ onLogin, onGuest }) {
   const [mode, setMode] = React.useState('login'); 
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -1434,6 +1437,12 @@ function LoginApp({ onLogin }) {
             {mode === 'login' ? 'Vào Học Ngay' : 'Xác Nhận & Đăng Nhập'}
           </button>
         </form>
+
+        {mode === 'login' && (
+          <button type="button" onClick={onGuest} className="w-full mt-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3.5 rounded-xl font-bold text-base hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all border border-gray-200 dark:border-gray-600">
+            👤 Vào với tư cách Khách
+          </button>
+        )}
         
         <div className="mt-6 text-center text-sm font-semibold">
           {mode === 'login' ? (
@@ -1448,21 +1457,93 @@ function LoginApp({ onLogin }) {
   );
 }
 
+function TutorialPopup({ onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 pop-in border border-gray-100 dark:border-gray-700" onClick={e=>e.stopPropagation()}>
+        <h2 className="text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mb-1 flex items-center gap-2">🇯🇵 Chào mừng đến Za Pan!</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Ứng dụng học Tiếng Nhật miễn phí, offline 100%</p>
+        
+        <div className="space-y-3 text-sm">
+          <div className="flex gap-3 items-start bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl">
+            <span className="text-xl flex-shrink-0">🎲</span>
+            <div><b className="text-gray-800 dark:text-white">Ngẫu Nhiên:</b> <span className="text-gray-600 dark:text-gray-300">Hệ thống sẽ đưa ra câu hỏi ngẫu nhiên. Gõ romaji (phiên âm) để trả lời. Thuật toán SRS sẽ tự ưu tiên các chữ bạn hay sai!</span></div>
+          </div>
+          <div className="flex gap-3 items-start bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl">
+            <span className="text-xl flex-shrink-0">📝</span>
+            <div><b className="text-gray-800 dark:text-white">Điền Hết:</b> <span className="text-gray-600 dark:text-gray-300">Tất cả các thẻ chữ xuất hiện trên màn hình. Bấm vào từng thẻ rồi gõ đáp án. Phù hợp để ôn tổng thể.</span></div>
+          </div>
+          <div className="flex gap-3 items-start bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl">
+            <span className="text-xl flex-shrink-0">⏱️</span>
+            <div><b className="text-gray-800 dark:text-white">60 Giây:</b> <span className="text-gray-600 dark:text-gray-300">Thử thách tốc độ! Gõ đáp án thật nhanh trong 60 giây. Điểm cao sẽ được ghi vào Bảng Xếp Hạng.</span></div>
+          </div>
+          <div className="flex gap-3 items-start bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl">
+            <span className="text-xl flex-shrink-0">🎮</span>
+            <div><b className="text-gray-800 dark:text-white">Match Game:</b> <span className="text-gray-600 dark:text-gray-300">Mini-game nối chữ! Ghép cặp Tiếng Nhật với phiên âm/nghĩa đúng trong 60 giây. Nối sai bị trừ 3 giây!</span></div>
+          </div>
+          <div className="flex gap-3 items-start bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl">
+            <span className="text-xl flex-shrink-0">📊</span>
+            <div><b className="text-gray-800 dark:text-white">Thống Kê:</b> <span className="text-gray-600 dark:text-gray-300">Xem biểu đồ các chữ hay sai nhất và tiến độ tổng thể để biết cần ôn gì.</span></div>
+          </div>
+        </div>
+
+        <div className="mt-5 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+          <p className="text-xs text-yellow-700 dark:text-yellow-300 font-semibold">💡 Mẹo: Chọn bảng chữ cái (Hiragana/Katakana) hoặc tab Từ Vựng/Kanji ở trên, rồi tick chọn các nhóm muốn học trước khi bắt đầu!</p>
+        </div>
+
+        <button onClick={onClose} className="w-full mt-6 bg-[#3182ce] text-white py-3.5 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all shadow-lg shadow-blue-500/30">
+          Bắt Đầu Học Ngay! 🚀
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [currentUser, setCurrentUser] = React.useState(() => localStorage.getItem('kana_current_user') || null);
+  const [isGuest, setIsGuest] = React.useState(() => localStorage.getItem('kana_is_guest') === 'true');
+  const [showTutorial, setShowTutorial] = React.useState(false);
+
   const handleLogin = (username) => {
     localStorage.setItem('kana_current_user', username);
+    localStorage.setItem('kana_is_guest', 'false');
     setCurrentUser(username);
+    setIsGuest(false);
+    // Show tutorial on first login
+    const tutKey = `kana_tutorial_shown_${username}`;
+    if (!localStorage.getItem(tutKey)) {
+      setShowTutorial(true);
+      localStorage.setItem(tutKey, 'true');
+    }
+  };
+  const handleGuest = () => {
+    const guestName = '__guest__';
+    localStorage.setItem('kana_current_user', guestName);
+    localStorage.setItem('kana_is_guest', 'true');
+    setCurrentUser(guestName);
+    setIsGuest(true);
+    const tutKey = `kana_tutorial_shown_${guestName}`;
+    if (!localStorage.getItem(tutKey)) {
+      setShowTutorial(true);
+      localStorage.setItem(tutKey, 'true');
+    }
   };
   const handleLogout = () => {
     localStorage.removeItem('kana_current_user');
+    localStorage.removeItem('kana_is_guest');
     setCurrentUser(null);
+    setIsGuest(false);
   };
   
   if (!currentUser) {
-    return <LoginApp onLogin={handleLogin} />;
+    return <LoginApp onLogin={handleLogin} onGuest={handleGuest} />;
   }
-  return <MainApp key={currentUser} currentUser={currentUser} onLogout={handleLogout} />;
+  return (
+    <>
+      {showTutorial && <TutorialPopup onClose={() => setShowTutorial(false)} />}
+      <MainApp key={currentUser} currentUser={isGuest ? null : currentUser} isGuest={isGuest} onLogout={handleLogout} />
+    </>
+  );
 }
 
 class ErrorBoundary extends React.Component {
