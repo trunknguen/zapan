@@ -15,7 +15,7 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     .kana-text { font-family: 'Noto Sans JP', sans-serif; }
-    input { -webkit-appearance: none; }
+    input { -webkit-appearance: none; appearance: none; }
     @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
     .animate-shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes popIn { 0%{transform:scale(0.95);opacity:0} 100%{transform:scale(1);opacity:1} }
@@ -188,7 +188,35 @@ const speakKana = (text, on) => {
   const u = new SpeechSynthesisUtterance(text); u.lang='ja-JP'; u.rate=1.0; u.pitch=1.1;
   window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
 };
-const checkAns = (val, kana) => { if(!kana) return false; return Array.isArray(kana.answer) ? kana.answer.includes(val) : kana.answer===val; };
+const ROMAJI_TO_HIRA = {};
+['main','dakuten','combination'].forEach(cat => {
+  if(KANA_DEF.hiragana[cat]) KANA_DEF.hiragana[cat].forEach(g => g.items.forEach(i => i.a.forEach(a => ROMAJI_TO_HIRA[a] = i.q)));
+});
+ROMAJI_TO_HIRA['nn'] = 'ん'; ROMAJI_TO_HIRA['n'] = 'ん';
+
+const convertRomajiToHiragana = (str) => {
+  let res = '', i = 0;
+  while(i < str.length) {
+    if(i+2 < str.length && ROMAJI_TO_HIRA[str.slice(i, i+3)]) { res += ROMAJI_TO_HIRA[str.slice(i, i+3)]; i+=3; continue; }
+    if(i+1 < str.length && ROMAJI_TO_HIRA[str.slice(i, i+2)]) { res += ROMAJI_TO_HIRA[str.slice(i, i+2)]; i+=2; continue; }
+    if(ROMAJI_TO_HIRA[str.slice(i, i+1)]) { res += ROMAJI_TO_HIRA[str.slice(i, i+1)]; i+=1; continue; }
+    if(i+1 < str.length && str[i] === str[i+1] && str[i] !== 'n') { res += 'っ'; i+=1; continue; }
+    res += str[i]; i+=1;
+  }
+  return res;
+};
+
+const checkAns = (val, kana) => {
+  if(!kana || !val) return false;
+  const valNorm = val.toLowerCase().trim();
+  if(valNorm === kana.question) return true;
+  const answers = Array.isArray(kana.answer) ? kana.answer : [kana.answer];
+  if(answers.includes(valNorm)) return true;
+  for(const ans of answers) {
+    if(valNorm === convertRomajiToHiragana(ans)) return true;
+  }
+  return false;
+};
 
 const T = {
   vi: {
@@ -205,7 +233,7 @@ const T = {
     cards: 'Thẻ', mistakes: 'Lỗi',
     checkNow: 'Check Ngay', finishCheck: 'Điền Xong Check',
     fillTitle: 'Điền Romaji cho các chữ Kana',
-    correct: 'Đúng', wrong: 'Sai',
+    correct: 'Đúng', wrong: 'Sai', strokeOrder: 'Nét chữ',
     total: 'Tổng', ratio: 'Tỷ lệ',
     tapOrTab: 'Bấm vào thẻ hoặc dùng Tab để chọn • Gõ phím trực tiếp',
     finishQuiz: 'Hoàn Thành', retry: 'Làm Lại',
@@ -233,7 +261,7 @@ const T = {
     cards: 'Cards', mistakes: 'Mistakes',
     checkNow: 'Instant Check', finishCheck: 'Check on Finish',
     fillTitle: 'Fill in Romaji for each Kana',
-    correct: 'Correct', wrong: 'Wrong',
+    correct: 'Correct', wrong: 'Wrong', strokeOrder: 'Strokes',
     total: 'Total', ratio: 'Accuracy',
     tapOrTab: 'Tap a card or use Tab to select • Type directly',
     finishQuiz: 'Finish Quiz', retry: 'Try Again',
@@ -330,6 +358,12 @@ function App() {
   const [inputValue, setInputValue] = React.useState('');
   const [status, setStatus] = React.useState('idle');
   const [correctCount, setCorrectCount] = React.useState(0);
+  const [showStrokeOrder, setShowStrokeOrder] = React.useState(false);
+  const [showVirtualKb, setShowVirtualKb] = React.useState(false);
+  const [isDrawingMode, setIsDrawingMode] = React.useState(false);
+  const [drawingChecked, setDrawingChecked] = React.useState(false);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+  const canvasRef = React.useRef(null);
   const inputRef = React.useRef('');
   const statusRef = React.useRef('idle');
   const currentKanaRef = React.useRef(null);
@@ -376,6 +410,7 @@ function App() {
 
   React.useEffect(() => { if(appState==='quiz'&&status==='idle'&&currentKana) speakKana(currentKana.question,settings.isSound); }, [currentIndex,appState,practiceMode,status]);
   React.useEffect(() => { if(practiceMode==='practice_mistakes'&&mistakesPool.length===0) setPracticeMode('normal'); }, [mistakesPool.length]);
+  React.useEffect(() => { setShowStrokeOrder(false); }, [currentIndex, appState]);
 
   const toggleGroup = (gid) => { const c=selectedGroups[selectedAlphabet]; setSelectedGroups({...selectedGroups,[selectedAlphabet]:c.includes(gid)?c.filter(i=>i!==gid):[...c,gid]}); };
   const toggleAllCategory = (cat) => { const cg=KANA_DEF[selectedAlphabet][cat].map(g=>g.id); const c=selectedGroups[selectedAlphabet]; const all=cg.every(i=>c.includes(i)); setSelectedGroups({...selectedGroups,[selectedAlphabet]:all?c.filter(i=>!cg.includes(i)):Array.from(new Set([...c,...cg]))}); };
@@ -399,9 +434,27 @@ function App() {
     return genNext(pool);
   };
 
+  const handleVirtualKey = (char) => {
+    if (statusRef.current !== 'idle') return;
+    const kana = currentKanaRef.current; if (!kana) return;
+    const nv = inputRef.current + char;
+    setInputValue(nv); inputRef.current = nv;
+    if(checkAns(nv, kana)) setTimeout(()=>handleCorrectRandom(),0);
+  };
+  const handleVirtualBackspace = () => {
+    if (statusRef.current !== 'idle') return;
+    const nv = inputRef.current.slice(0, -1);
+    setInputValue(nv); inputRef.current = nv;
+  };
+
+  const clearCanvas = () => { if(!canvasRef.current) return; const ctx=canvasRef.current.getContext('2d'); ctx.clearRect(0,0,canvasRef.current.width,canvasRef.current.height); };
+  const startDrawingCanvas = (e) => { if(drawingChecked) return; setIsDrawing(true); const ctx=canvasRef.current.getContext('2d'); const rect=canvasRef.current.getBoundingClientRect(); const x=(e.clientX||(e.touches&&e.touches[0].clientX))-rect.left; const y=(e.clientY||(e.touches&&e.touches[0].clientY))-rect.top; ctx.beginPath(); ctx.moveTo(x,y); };
+  const drawCanvas = (e) => { if(!isDrawing||drawingChecked) return; const ctx=canvasRef.current.getContext('2d'); const rect=canvasRef.current.getBoundingClientRect(); const x=(e.clientX||(e.touches&&e.touches[0].clientX))-rect.left; const y=(e.clientY||(e.touches&&e.touches[0].clientY))-rect.top; ctx.lineTo(x,y); ctx.strokeStyle=settings.isDark?'#e2e8f0':'#334155'; ctx.lineWidth=8; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke(); };
+  const stopDrawingCanvas = () => setIsDrawing(false);
+
   const startRandomQuiz = () => {
     if(activeKanaList.length===0){alert("Chon it nhat 1 hang Kana!");return;}
-    setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle');
+    setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle'); setDrawingChecked(false); clearCanvas();
     setCurrentIndex(genWeightedNext(activeKanaList, -1)); setAppState('quiz');
   };
   const startTimeAttack = () => {
@@ -420,12 +473,12 @@ function App() {
     setStatus('correct'); setCorrectCount(p=>p+1);
     let pool=activeQuizData;
     if(currentKana&&currentKana.mistakeCount>0){ const nd=kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount-1}:k); setActiveData(nd); const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
-    setTimeout(()=>{ setInputValue(''); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
+    setTimeout(()=>{ setInputValue(''); setDrawingChecked(false); clearCanvas(); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
   };
   const handleErrorRandom = () => {
     setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
     if(currentKana){ setActiveData(kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
-    setTimeout(()=>{setStatus('idle');setInputValue('');},400);
+    setTimeout(()=>{setStatus('idle');setInputValue('');setDrawingChecked(false);clearCanvas();},400);
   };
 
   // RANDOM QUIZ KEYDOWN
@@ -655,25 +708,83 @@ function App() {
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-300 ease-out ${practiceMode==='practice_mistakes'?'bg-orange-400':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width:`${practiceMode==='practice_mistakes'?100:progressPercent}%`}}></div></div>
-        <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center">
-          <button onClick={togglePracticeMode} disabled={practiceMode==='normal'&&mistakesPool.length===0} className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all border ${practiceMode==='practice_mistakes'?'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800':mistakesPool.length>0?'text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm':'text-gray-300 dark:text-gray-600 border-transparent opacity-50'}`}>
-            {practiceMode==='practice_mistakes'?`\uD83C\uDFAF ${t.fixMistakes}`:`${t.reviewMistakes} ${mistakesPool.length}`}
-          </button>
+        <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center z-20">
+          <div className="flex gap-2">
+            <button onClick={togglePracticeMode} disabled={practiceMode==='normal'&&mistakesPool.length===0} className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all border ${practiceMode==='practice_mistakes'?'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800':mistakesPool.length>0?'text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm':'text-gray-300 dark:text-gray-600 border-transparent opacity-50'}`}>
+              {practiceMode==='practice_mistakes'?`\uD83C\uDFAF ${t.fixMistakes}`:`${t.reviewMistakes} ${mistakesPool.length}`}
+            </button>
+            <button onClick={()=>{setIsDrawingMode(!isDrawingMode);setDrawingChecked(false);clearCanvas();}} className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all border shadow-sm ${isDrawingMode?'bg-[#3182ce] text-white border-[#3182ce]':'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600'}`}>✍️ Tập viết</button>
+          </div>
           <span className={`px-2 py-1 rounded-full bg-gray-100/50 dark:bg-gray-800/50 ${practiceMode==='practice_mistakes'?'text-orange-500':'text-gray-400 dark:text-gray-500'} ${status==='correct'?'!text-blue-500 font-bold':''}`}>{practiceMode==='practice_mistakes'?`${mistakesPool.length} ${t.cards}`:`${correctCount} / ${goalCount}`}</span>
         </div>
         <div className="w-full max-w-[320px] flex flex-col items-center mt-20 sm:mt-16">
           <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex flex-col items-center justify-center mb-6 sm:mb-10 transition-all duration-200 relative ${cBorder} ${status==='correct'?'scale-[1.03] shadow-lg shadow-green-100/50 dark:shadow-none':'hover:scale-[1.01]'}`}>
             {currentKana.mistakeCount>0&&practiceMode==='normal'&&<div className="absolute top-5 right-5 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800">{currentKana.mistakeCount} {t.mistakes}</div>}
-            <span className={`leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm ${currentKana.meaning?'text-[80px] sm:text-[100px]':'text-[140px] sm:text-[160px]'}`}>{currentKana.question}</span>
-            {currentKana.meaning && status==='correct' && <div className="text-lg sm:text-xl text-green-600 dark:text-green-400 font-bold mt-2 pop-in">{currentKana.meaning[settings.lang]||currentKana.meaning.en}</div>}
-            {currentKana.meaning && status!=='correct' && <div className="text-sm text-gray-400 dark:text-gray-500 mt-2">{t.meaning}: ?</div>}
+            {(!isDrawingMode || drawingChecked) && (
+              <button onClick={(e)=>{e.stopPropagation();setShowStrokeOrder(!showStrokeOrder);}} className={`absolute top-4 left-4 p-2 rounded-full transition-colors z-10 ${showStrokeOrder?'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400':'text-gray-400 hover:text-blue-500 bg-gray-50 hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-gray-700'}`} title={t.strokeOrder}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.132l-2.685.8.8-2.685a4.5 4.5 0 011.132-1.89L16.862 4.487zm0 0L19.5 7.125"/></svg>
+              </button>
+            )}
+            {showStrokeOrder || (isDrawingMode && drawingChecked) ? (
+              <div className="flex flex-wrap justify-center items-center gap-1 sm:gap-2 w-full p-2 h-full">
+                {currentKana.question.split('').map((char, i) => {
+                  const hex = char.charCodeAt(0).toString(16).padStart(5, '0');
+                  return <img key={i} src={`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${hex}.svg`} alt={char} className="w-16 h-16 sm:w-24 sm:h-24 object-contain dark:invert opacity-80" />;
+                })}
+              </div>
+            ) : (
+              <span className={`leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm flex flex-col items-center justify-center flex-1 w-full ${(currentKana.meaning||isDrawingMode)?'mt-6':''}`}>
+                {isDrawingMode && !drawingChecked ? (
+                   <span className="text-[36px] sm:text-[45px] text-gray-500 dark:text-gray-400 font-normal px-4 text-center">{currentKana.meaning ? (currentKana.meaning[settings.lang]||currentKana.meaning.en) : Array.isArray(currentKana.answer)?currentKana.answer[0]:currentKana.answer}</span>
+                ) : (
+                   <span className={currentKana.meaning?'text-[70px] sm:text-[90px]':'text-[140px] sm:text-[160px]'}>{currentKana.question}</span>
+                )}
+              </span>
+            )}
+            {currentKana.meaning && (status==='correct' || drawingChecked) && <div className="text-lg sm:text-xl text-green-600 dark:text-green-400 font-bold mb-6 pop-in h-8">{currentKana.meaning[settings.lang]||currentKana.meaning.en}</div>}
+            {currentKana.meaning && status!=='correct' && !drawingChecked && <div className="text-sm text-gray-400 dark:text-gray-500 mb-6 h-8 flex items-center">{t.meaning}: ?</div>}
           </div>
-          <div className={`w-full relative ${iAnim} px-2 sm:px-0`}>
-            <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${iBorder} ${tClass}`}>
-              {inputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.romaji}</span>}
+          {isDrawingMode ? (
+            <div className="w-full flex-col items-center mt-2 px-2 sm:px-0">
+              <div className={`relative w-full h-[220px] sm:h-[260px] bg-white dark:bg-gray-800 border-2 rounded-3xl overflow-hidden shadow-inner flex shrink-0 ${drawingChecked ? 'border-gray-200 dark:border-gray-700 opacity-80 pointer-events-none' : 'border-dashed border-[#3182ce] dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/10'}`}>
+                 <canvas ref={canvasRef} width={320} height={260} className="w-full h-full touch-none cursor-crosshair" onMouseDown={startDrawingCanvas} onMouseMove={drawCanvas} onMouseUp={stopDrawingCanvas} onMouseOut={stopDrawingCanvas} onTouchStart={startDrawingCanvas} onTouchMove={drawCanvas} onTouchEnd={stopDrawingCanvas}/>
+                 {!drawingChecked && (
+                    <button onClick={clearCanvas} className="absolute top-2 right-2 p-2 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded-full hover:bg-gray-200 active:scale-95 shadow-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                    </button>
+                 )}
+              </div>
+              {!drawingChecked && (
+                <button onClick={()=>setDrawingChecked(true)} className="w-full mt-4 bg-[#3182ce] text-white rounded-2xl py-4 font-bold text-lg shadow-md active:scale-95 transition-all">Hiện đáp án</button>
+              )}
+              {drawingChecked && (
+                <div className="flex gap-4 w-full mt-4 pop-in">
+                  <button onClick={handleErrorRandom} className="flex-1 bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/40 dark:border-red-800 dark:text-red-400 rounded-2xl py-4 font-bold text-lg hover:bg-red-100 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg> {t.wrong}</button>
+                  <button onClick={handleCorrectRandom} className="flex-1 bg-green-500 text-white border border-green-600 dark:border-green-400 rounded-2xl py-4 font-bold text-lg hover:bg-green-600 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg> {t.correct}</button>
+                </div>
+              )}
             </div>
-            <div className="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">{t.typeHere}</div>
-          </div>
+          ) : (
+            <div className={`w-full relative ${iAnim} px-2 sm:px-0`}>
+              <div className={`w-full px-12 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text relative ${iBorder} ${tClass}`}>
+                <button onClick={(e)=>{e.stopPropagation();setShowVirtualKb(!showVirtualKb);}} className={`absolute right-3 sm:right-4 p-2 sm:p-2.5 rounded-xl transition-all z-10 ${showVirtualKb?'bg-[#3182ce] text-white shadow-md':'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700'}`} title="Virtual Keyboard">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 sm:w-7 sm:h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18V6z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 10.5h.008v.008H6v-.008zm3 0h.008v.008H9v-.008zm3 0h.008v.008H12v-.008zm3 0h.008v.008H15v-.008zm3 0h.008v.008H18v-.008zm-9 3h.008v.008H9v-.008zm3 0h.008v.008H12v-.008zm3 0h.008v.008H15v-.008zm-3 3h.008v.008H12v-.008z" /></svg>
+                </button>
+                {inputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.romaji}</span>}
+              </div>
+              {!showVirtualKb && <div className="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">{t.typeHere}</div>}
+              {showVirtualKb && (
+                <div className="flex flex-wrap justify-center content-start gap-1 sm:gap-2 mt-3 max-h-48 overflow-y-auto bg-gray-100 dark:bg-gray-800 p-2 rounded-xl shadow-inner pop-in" onClick={(e)=>e.stopPropagation()}>
+                  <button onClick={handleVirtualBackspace} className="w-12 h-10 sm:w-16 sm:h-12 bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 rounded-lg shadow-sm font-bold text-lg sm:text-xl flex items-center justify-center hover:bg-red-200 active:scale-95 transition-all">&#x232B;</button>
+                  {['main','dakuten','combination'].map(cat => KANA_DEF[selectedAlphabet][cat] && KANA_DEF[selectedAlphabet][cat].map(g => g.items.map(i => (
+                    <button key={i.q} onClick={() => handleVirtualKey(i.q)} className="w-10 h-10 sm:w-12 sm:h-12 bg-white text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-lg shadow-sm font-bold text-lg sm:text-lg flex items-center justify-center hover:bg-[#3182ce] hover:text-white dark:hover:bg-blue-600 active:scale-95 transition-colors">
+                      {i.q}
+                    </button>
+                  ))))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
