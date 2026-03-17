@@ -164,10 +164,35 @@ const KANJI_N5 = {
     {q:'話',a:['hana','wa'],m:{vi:'Nói',en:'Talk'}},{q:'行',a:['i','kou'],m:{vi:'Đi',en:'Go'}},
     {q:'来',a:['ku','rai'],m:{vi:'Đến',en:'Come'}},{q:'出',a:['de','shutsu'],m:{vi:'Ra',en:'Exit'}}]}
 };
-const VOCAB_CATS = Object.keys(VOCAB_N5);
-const KANJI_CATS = Object.keys(KANJI_N5);
-const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=VOCAB_N5[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
-const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=KANJI_N5[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
+
+const VOCAB_N4 = {
+  n4_daily:{id:'n4_daily',label:'Hàng ngày (N4)',items:[
+    {q:'つかう',a:['tsukau'],m:{vi:'Sử dụng',en:'Use'}},{q:'あらう',a:['arau'],m:{vi:'Rửa',en:'Wash'}},
+    {q:'おもい',a:['omoi'],m:{vi:'Nặng',en:'Heavy'}},{q:'かるい',a:['karui'],m:{vi:'Nhẹ',en:'Light'}},
+    {q:'あまい',a:['amai'],m:{vi:'Ngọt',en:'Sweet'}},{q:'からい',a:['karai'],m:{vi:'Cay',en:'Spicy'}}]},
+  n4_society:{id:'n4_society',label:'Xã hội (N4)',items:[
+    {q:'しゃかい',a:['shakai'],m:{vi:'Xã hội',en:'Society'}},{q:'れきし',a:['rekishi'],m:{vi:'Lịch sử',en:'History'}},
+    {q:'ぶんか',a:['bunka'],m:{vi:'Văn hóa',en:'Culture'}},{q:'けいざい',a:['keizai'],m:{vi:'Kinh tế',en:'Economy'}},
+    {q:'せかい',a:['sekai'],m:{vi:'Thế giới',en:'World'}},{q:'みらい',a:['mirai'],m:{vi:'Tương lai',en:'Future'}}]}
+};
+const KANJI_N4 = {
+  n4_verbs:{id:'n4_verbs',label:'Động từ (N4)',items:[
+    {q:'思',a:['omo','shi'],m:{vi:'Tư',en:'Think'}},{q:'知',a:['shi','chi'],m:{vi:'Tri',en:'Know'}},
+    {q:'答',a:['kota','tou'],m:{vi:'Đáp',en:'Answer'}},{q:'作',a:['tsuku','saku'],m:{vi:'Tác',en:'Make'}},
+    {q:'教',a:['oshi','kyou'],m:{vi:'Giáo',en:'Teach'}},{q:'売',a:['u','bai'],m:{vi:'Mại',en:'Sell'}}]},
+  n4_nouns:{id:'n4_nouns',label:'Danh từ (N4)',items:[
+    {q:'心',a:['kokoro','shin'],m:{vi:'Tâm',en:'Heart'}},{q:'体',a:['karada','tai'],m:{vi:'Thể',en:'Body'}},
+    {q:'声',a:['koe','sei'],m:{vi:'Thanh',en:'Voice'}},{q:'頭',a:['atama','zu'],m:{vi:'Đầu',en:'Head'}},
+    {q:'顔',a:['kao','gan'],m:{vi:'Nhan',en:'Face'}},{q:'首',a:['kubi','shu'],m:{vi:'Thủ',en:'Neck'}}]}
+};
+
+const ALL_VOCAB = { ...VOCAB_N5, ...VOCAB_N4 };
+const ALL_KANJI = { ...KANJI_N5, ...KANJI_N4 };
+
+const VOCAB_CATS = Object.keys(ALL_VOCAB);
+const KANJI_CATS = Object.keys(ALL_KANJI);
+const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
+const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
 const defaultVocabData = genVocabList();
 const defaultKanjiData = genKanjiList();
 
@@ -829,17 +854,17 @@ function MainApp({ currentUser, onLogout }) {
         </>)}
         {studyMode==='vocab' && (
           <div className="w-full max-w-5xl">
-            <div className="mb-4"><SelectButton isSelected={selectedVocabGroups.length===VOCAB_CATS.length} onClick={()=>setSelectedVocabGroups(selectedVocabGroups.length===VOCAB_CATS.length?[]:VOCAB_CATS.map(c=>VOCAB_N5[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {VOCAB_CATS.map(c=>{const g=VOCAB_N5[c]; return <SelectButton key={g.id} isSelected={selectedVocabGroups.includes(g.id)} onClick={()=>setSelectedVocabGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
+            <div className="mb-4"><SelectButton isSelected={selectedVocabGroups.length===VOCAB_CATS.length} onClick={()=>setSelectedVocabGroups(selectedVocabGroups.length===VOCAB_CATS.length?[]:VOCAB_CATS.map(c=>ALL_VOCAB[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {VOCAB_CATS.map(c=>{const g=ALL_VOCAB[c]; return <SelectButton key={g.id} isSelected={selectedVocabGroups.includes(g.id)} onClick={()=>setSelectedVocabGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
             </div>
           </div>
         )}
         {studyMode==='kanji' && (
           <div className="w-full max-w-5xl">
-            <div className="mb-4"><SelectButton isSelected={selectedKanjiGroups.length===KANJI_CATS.length} onClick={()=>setSelectedKanjiGroups(selectedKanjiGroups.length===KANJI_CATS.length?[]:KANJI_CATS.map(c=>KANJI_N5[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {KANJI_CATS.map(c=>{const g=KANJI_N5[c]; return <SelectButton key={g.id} isSelected={selectedKanjiGroups.includes(g.id)} onClick={()=>setSelectedKanjiGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
+            <div className="mb-4"><SelectButton isSelected={selectedKanjiGroups.length===KANJI_CATS.length} onClick={()=>setSelectedKanjiGroups(selectedKanjiGroups.length===KANJI_CATS.length?[]:KANJI_CATS.map(c=>ALL_KANJI[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {KANJI_CATS.map(c=>{const g=ALL_KANJI[c]; return <SelectButton key={g.id} isSelected={selectedKanjiGroups.includes(g.id)} onClick={()=>setSelectedKanjiGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
             </div>
           </div>
         )}
