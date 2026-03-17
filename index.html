@@ -1457,9 +1457,16 @@ function LoginApp({ onLogin, onGuest }) {
   );
 }
 
-function TutorialPopup({ onClose }) {
+function TutorialPopup({ onClose, userKey }) {
+  const [dontShow, setDontShow] = React.useState(false);
+  const handleClose = () => {
+    if (dontShow) {
+      localStorage.setItem(`kana_tutorial_hidden_${userKey}`, 'true');
+    }
+    onClose();
+  };
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4" onClick={handleClose}>
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 pop-in border border-gray-100 dark:border-gray-700" onClick={e=>e.stopPropagation()}>
         <h2 className="text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mb-1 flex items-center gap-2">🇯🇵 Chào mừng đến Za Pan!</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Ứng dụng học Tiếng Nhật miễn phí, offline 100%</p>
@@ -1491,7 +1498,12 @@ function TutorialPopup({ onClose }) {
           <p className="text-xs text-yellow-700 dark:text-yellow-300 font-semibold">💡 Mẹo: Chọn bảng chữ cái (Hiragana/Katakana) hoặc tab Từ Vựng/Kanji ở trên, rồi tick chọn các nhóm muốn học trước khi bắt đầu!</p>
         </div>
 
-        <button onClick={onClose} className="w-full mt-6 bg-[#3182ce] text-white py-3.5 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all shadow-lg shadow-blue-500/30">
+        <label className="flex items-center gap-2 mt-5 cursor-pointer select-none">
+          <input type="checkbox" checked={dontShow} onChange={e=>setDontShow(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-[#3182ce] focus:ring-[#3182ce] cursor-pointer" />
+          <span className="text-sm text-gray-500 dark:text-gray-400">Không hiển thị lại cho lần sau</span>
+        </label>
+
+        <button onClick={handleClose} className="w-full mt-4 bg-[#3182ce] text-white py-3.5 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all shadow-lg shadow-blue-500/30">
           Bắt Đầu Học Ngay! 🚀
         </button>
       </div>
@@ -1509,11 +1521,8 @@ function App() {
     localStorage.setItem('kana_is_guest', 'false');
     setCurrentUser(username);
     setIsGuest(false);
-    // Show tutorial on first login
-    const tutKey = `kana_tutorial_shown_${username}`;
-    if (!localStorage.getItem(tutKey)) {
+    if (!localStorage.getItem(`kana_tutorial_hidden_${username}`)) {
       setShowTutorial(true);
-      localStorage.setItem(tutKey, 'true');
     }
   };
   const handleGuest = () => {
@@ -1522,10 +1531,8 @@ function App() {
     localStorage.setItem('kana_is_guest', 'true');
     setCurrentUser(guestName);
     setIsGuest(true);
-    const tutKey = `kana_tutorial_shown_${guestName}`;
-    if (!localStorage.getItem(tutKey)) {
+    if (!localStorage.getItem(`kana_tutorial_hidden_${guestName}`)) {
       setShowTutorial(true);
-      localStorage.setItem(tutKey, 'true');
     }
   };
   const handleLogout = () => {
@@ -1540,7 +1547,7 @@ function App() {
   }
   return (
     <>
-      {showTutorial && <TutorialPopup onClose={() => setShowTutorial(false)} />}
+      {showTutorial && <TutorialPopup onClose={() => setShowTutorial(false)} userKey={isGuest ? '__guest__' : currentUser} />}
       <MainApp key={currentUser} currentUser={isGuest ? null : currentUser} isGuest={isGuest} onLogout={handleLogout} />
     </>
   );
