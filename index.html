@@ -20,12 +20,14 @@
     .animate-shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes popIn { 0%{transform:scale(0.95);opacity:0} 100%{transform:scale(1);opacity:1} }
     .pop-in { animation: popIn 0.2s ease-out both; }
+    @keyframes confettiFall { 0%{transform:translateY(-100vh) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+    .confetti-piece { position:fixed;width:10px;height:10px;top:-10px;z-index:9999;animation:confettiFall 3s ease-in forwards; }
   </style>
 </head>
 <body class="bg-[#fcfcfc] dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased transition-colors duration-300">
 <div id="root"></div>
 <script type="text/babel">
-const STORAGE_KEY='kana_weakness_data_v2', SETTINGS_KEY='kana_settings_v1';
+const STORAGE_KEY='kana_weakness_data_v2', SETTINGS_KEY='kana_settings_v1', HIGHSCORE_KEY='kana_highscore_v1';
 const KANA_DEF = {
   hiragana: {
     main: [
@@ -98,6 +100,76 @@ const KANA_DEF = {
   }
 };
 
+const VOCAB_N5 = {
+  numbers:{id:'numbers',label:'Số đếm',items:[
+    {q:'いち',a:['ichi'],m:{vi:'Một',en:'One'}},{q:'に',a:['ni'],m:{vi:'Hai',en:'Two'}},{q:'さん',a:['san'],m:{vi:'Ba',en:'Three'}},
+    {q:'よん',a:['yon','shi'],m:{vi:'Bốn',en:'Four'}},{q:'ご',a:['go'],m:{vi:'Năm',en:'Five'}},{q:'ろく',a:['roku'],m:{vi:'Sáu',en:'Six'}},
+    {q:'なな',a:['nana','shichi'],m:{vi:'Bảy',en:'Seven'}},{q:'はち',a:['hachi'],m:{vi:'Tám',en:'Eight'}},
+    {q:'きゅう',a:['kyuu','ku'],m:{vi:'Chín',en:'Nine'}},{q:'じゅう',a:['juu'],m:{vi:'Mười',en:'Ten'}}]},
+  family:{id:'family',label:'Gia đình',items:[
+    {q:'おかあさん',a:['okaasan'],m:{vi:'Mẹ',en:'Mother'}},{q:'おとうさん',a:['otousan'],m:{vi:'Cha',en:'Father'}},
+    {q:'おにいさん',a:['oniisan'],m:{vi:'Anh trai',en:'Older brother'}},{q:'おねえさん',a:['oneesan'],m:{vi:'Chị gái',en:'Older sister'}},
+    {q:'いもうと',a:['imouto'],m:{vi:'Em gái',en:'Younger sister'}},{q:'おとうと',a:['otouto'],m:{vi:'Em trai',en:'Younger brother'}},
+    {q:'こども',a:['kodomo'],m:{vi:'Trẻ em',en:'Child'}},{q:'ともだち',a:['tomodachi'],m:{vi:'Bạn bè',en:'Friend'}}]},
+  time:{id:'time',label:'Thời gian',items:[
+    {q:'きょう',a:['kyou'],m:{vi:'Hôm nay',en:'Today'}},{q:'あした',a:['ashita'],m:{vi:'Ngày mai',en:'Tomorrow'}},
+    {q:'きのう',a:['kinou'],m:{vi:'Hôm qua',en:'Yesterday'}},{q:'あさ',a:['asa'],m:{vi:'Buổi sáng',en:'Morning'}},
+    {q:'ひる',a:['hiru'],m:{vi:'Buổi trưa',en:'Noon'}},{q:'よる',a:['yoru'],m:{vi:'Buổi tối',en:'Night'}},
+    {q:'いま',a:['ima'],m:{vi:'Bây giờ',en:'Now'}},{q:'まいにち',a:['mainichi'],m:{vi:'Mỗi ngày',en:'Every day'}}]},
+  colors:{id:'colors',label:'Màu sắc',items:[
+    {q:'あか',a:['aka'],m:{vi:'Đỏ',en:'Red'}},{q:'あお',a:['ao'],m:{vi:'Xanh',en:'Blue'}},
+    {q:'しろ',a:['shiro'],m:{vi:'Trắng',en:'White'}},{q:'くろ',a:['kuro'],m:{vi:'Đen',en:'Black'}},
+    {q:'きいろ',a:['kiiro'],m:{vi:'Vàng',en:'Yellow'}},{q:'みどり',a:['midori'],m:{vi:'Xanh lá',en:'Green'}}]},
+  objects:{id:'objects',label:'Đồ vật',items:[
+    {q:'くるま',a:['kuruma'],m:{vi:'Xe hơi',en:'Car'}},{q:'でんわ',a:['denwa'],m:{vi:'Điện thoại',en:'Phone'}},
+    {q:'ほん',a:['hon'],m:{vi:'Sách',en:'Book'}},{q:'かばん',a:['kaban'],m:{vi:'Túi/Cặp',en:'Bag'}},
+    {q:'かさ',a:['kasa'],m:{vi:'Dù/Ô',en:'Umbrella'}},{q:'とけい',a:['tokei'],m:{vi:'Đồng hồ',en:'Clock'}},
+    {q:'つくえ',a:['tsukue'],m:{vi:'Bàn',en:'Desk'}},{q:'いす',a:['isu'],m:{vi:'Ghế',en:'Chair'}},
+    {q:'みず',a:['mizu'],m:{vi:'Nước',en:'Water'}}]},
+  verbs:{id:'verbs',label:'Động từ',items:[
+    {q:'たべる',a:['taberu'],m:{vi:'Ăn',en:'Eat'}},{q:'のむ',a:['nomu'],m:{vi:'Uống',en:'Drink'}},
+    {q:'みる',a:['miru'],m:{vi:'Xem',en:'See'}},{q:'きく',a:['kiku'],m:{vi:'Nghe',en:'Listen'}},
+    {q:'よむ',a:['yomu'],m:{vi:'Đọc',en:'Read'}},{q:'かく',a:['kaku'],m:{vi:'Viết',en:'Write'}},
+    {q:'はなす',a:['hanasu'],m:{vi:'Nói',en:'Speak'}},{q:'いく',a:['iku'],m:{vi:'Đi',en:'Go'}},
+    {q:'くる',a:['kuru'],m:{vi:'Đến',en:'Come'}},{q:'かえる',a:['kaeru'],m:{vi:'Về',en:'Return'}}]}
+};
+const KANJI_N5 = {
+  numbers_k:{id:'numbers_k',label:'Số',items:[
+    {q:'一',a:['ichi','hitotsu'],m:{vi:'Một',en:'One'}},{q:'二',a:['ni','futatsu'],m:{vi:'Hai',en:'Two'}},
+    {q:'三',a:['san','mittsu'],m:{vi:'Ba',en:'Three'}},{q:'四',a:['shi','yon'],m:{vi:'Bốn',en:'Four'}},
+    {q:'五',a:['go','itsutsu'],m:{vi:'Năm',en:'Five'}},{q:'六',a:['roku','muttsu'],m:{vi:'Sáu',en:'Six'}},
+    {q:'七',a:['shichi','nana'],m:{vi:'Bảy',en:'Seven'}},{q:'八',a:['hachi','yattsu'],m:{vi:'Tám',en:'Eight'}},
+    {q:'九',a:['ku','kyuu'],m:{vi:'Chín',en:'Nine'}},{q:'十',a:['juu'],m:{vi:'Mười',en:'Ten'}},
+    {q:'百',a:['hyaku'],m:{vi:'Trăm',en:'Hundred'}},{q:'千',a:['sen'],m:{vi:'Nghìn',en:'Thousand'}}]},
+  days:{id:'days',label:'Ngày tháng',items:[
+    {q:'日',a:['nichi','hi','jitsu'],m:{vi:'Ngày',en:'Day'}},{q:'月',a:['getsu','gatsu','tsuki'],m:{vi:'Tháng',en:'Month'}},
+    {q:'火',a:['ka','hi'],m:{vi:'Lửa',en:'Fire'}},{q:'水',a:['sui','mizu'],m:{vi:'Nước',en:'Water'}},
+    {q:'木',a:['moku','ki'],m:{vi:'Cây',en:'Tree'}},{q:'金',a:['kin','kane'],m:{vi:'Vàng',en:'Gold'}},
+    {q:'土',a:['do','tsuchi'],m:{vi:'Đất',en:'Earth'}},{q:'年',a:['nen','toshi'],m:{vi:'Năm',en:'Year'}}]},
+  people:{id:'people',label:'Người',items:[
+    {q:'人',a:['jin','nin','hito'],m:{vi:'Người',en:'Person'}},{q:'男',a:['otoko','dan'],m:{vi:'Nam',en:'Man'}},
+    {q:'女',a:['onna','jo'],m:{vi:'Nữ',en:'Woman'}},{q:'子',a:['ko','shi'],m:{vi:'Con',en:'Child'}},
+    {q:'学',a:['gaku','mana'],m:{vi:'Học',en:'Study'}},{q:'生',a:['sei','shou'],m:{vi:'Sinh',en:'Life'}},
+    {q:'先',a:['sen','saki'],m:{vi:'Trước',en:'Previous'}},{q:'友',a:['yuu','tomo'],m:{vi:'Bạn',en:'Friend'}},
+    {q:'父',a:['chichi','fu'],m:{vi:'Cha',en:'Father'}},{q:'母',a:['haha','bo'],m:{vi:'Mẹ',en:'Mother'}}]},
+  nature:{id:'nature',label:'Tự nhiên',items:[
+    {q:'山',a:['yama','san'],m:{vi:'Núi',en:'Mountain'}},{q:'川',a:['kawa','gawa'],m:{vi:'Sông',en:'River'}},
+    {q:'天',a:['ten','ame'],m:{vi:'Trời',en:'Sky'}},{q:'雨',a:['ame','u'],m:{vi:'Mưa',en:'Rain'}},
+    {q:'花',a:['hana','ka'],m:{vi:'Hoa',en:'Flower'}},{q:'空',a:['sora','kuu'],m:{vi:'Bầu trời',en:'Sky'}}]},
+  actions:{id:'actions',label:'Hành động',items:[
+    {q:'見',a:['mi','ken'],m:{vi:'Xem',en:'See'}},{q:'聞',a:['ki','bun'],m:{vi:'Nghe',en:'Listen'}},
+    {q:'読',a:['yo','doku'],m:{vi:'Đọc',en:'Read'}},{q:'書',a:['ka','sho'],m:{vi:'Viết',en:'Write'}},
+    {q:'食',a:['ta','shoku'],m:{vi:'Ăn',en:'Eat'}},{q:'飲',a:['no','in'],m:{vi:'Uống',en:'Drink'}},
+    {q:'話',a:['hana','wa'],m:{vi:'Nói',en:'Talk'}},{q:'行',a:['i','kou'],m:{vi:'Đi',en:'Go'}},
+    {q:'来',a:['ku','rai'],m:{vi:'Đến',en:'Come'}},{q:'出',a:['de','shutsu'],m:{vi:'Ra',en:'Exit'}}]}
+};
+const VOCAB_CATS = Object.keys(VOCAB_N5);
+const KANJI_CATS = Object.keys(KANJI_N5);
+const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=VOCAB_N5[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
+const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=KANJI_N5[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0}));}); return l; };
+const defaultVocabData = genVocabList();
+const defaultKanjiData = genKanjiList();
+
 const generateKanaList = () => {
   const list = [];
   ['hiragana','katakana'].forEach(alp => {
@@ -118,12 +190,74 @@ const speakKana = (text, on) => {
 };
 const checkAns = (val, kana) => { if(!kana) return false; return Array.isArray(kana.answer) ? kana.answer.includes(val) : kana.answer===val; };
 
+const T = {
+  vi: {
+    title: 'Kana Quiz', selectTitle: 'Chọn Bảng Chữ',
+    selectAll: 'Chọn Toàn Bộ / Bỏ Chọn',
+    mainKana: 'Chữ Cơ Bản', dakutenKana: 'Chữ Dakuten', comboKana: 'Chữ Ghép',
+    allMain: 'Tất Cả Cơ Bản', allDakuten: 'Tất Cả Dakuten', allCombo: 'Tất Cả Ghép',
+    random: 'Ngẫu Nhiên', fillAll: 'Điền Hết', timeAttack: '60 Giây',
+    srsHint: 'Chữ yếu sẽ xuất hiện nhiều hơn',
+    record: 'Kỷ lục',
+    menu: 'Menu', back: 'Quay lại',
+    romaji: 'Romaji?', typeHere: 'Gõ phím trực tiếp',
+    reviewMistakes: 'Ôn tập Lỗi', fixMistakes: 'Sửa Lỗi',
+    cards: 'Thẻ', mistakes: 'Lỗi',
+    checkNow: 'Check Ngay', finishCheck: 'Điền Xong Check',
+    fillTitle: 'Điền Romaji cho các chữ Kana',
+    correct: 'Đúng', wrong: 'Sai',
+    total: 'Tổng', ratio: 'Tỷ lệ',
+    tapOrTab: 'Bấm vào thẻ hoặc dùng Tab để chọn • Gõ phím trực tiếp',
+    finishQuiz: 'Hoàn Thành', retry: 'Làm Lại',
+    typefast: 'Gõ nhanh!',
+    scoreIn60: 'điểm trong 60 giây',
+    newRecord: 'Kỷ Lục Mới!',
+    highScore: 'Điểm cao nhất',
+    playAgain: 'Chơi Lại',
+    selectMin: 'Chọn ít nhất 1 hàng Kana!',
+    noData: 'Không có dữ liệu',
+    tabKana: 'Kana', tabVocab: 'Từ Vựng', tabKanji: 'Kanji',
+    vocabTitle: 'Từ Vựng N5', kanjiTitle: 'Kanji N5', meaning: 'Nghĩa',
+  },
+  en: {
+    title: 'Kana Quiz', selectTitle: 'Select Kana',
+    selectAll: 'Select All / Deselect',
+    mainKana: 'Main Kana', dakutenKana: 'Dakuten Kana', comboKana: 'Combo Kana',
+    allMain: 'All Main', allDakuten: 'All Dakuten', allCombo: 'All Combo',
+    random: 'Random', fillAll: 'Fill All', timeAttack: '60s Attack',
+    srsHint: 'Weak kana appear more often',
+    record: 'Record',
+    menu: 'Menu', back: 'Back',
+    romaji: 'Romaji?', typeHere: 'Type directly',
+    reviewMistakes: 'Review Mistakes', fixMistakes: 'Fix Mistakes',
+    cards: 'Cards', mistakes: 'Mistakes',
+    checkNow: 'Instant Check', finishCheck: 'Check on Finish',
+    fillTitle: 'Fill in Romaji for each Kana',
+    correct: 'Correct', wrong: 'Wrong',
+    total: 'Total', ratio: 'Accuracy',
+    tapOrTab: 'Tap a card or use Tab to select • Type directly',
+    finishQuiz: 'Finish Quiz', retry: 'Try Again',
+    typefast: 'Type fast!',
+    scoreIn60: 'correct in 60 seconds',
+    newRecord: 'New Record!',
+    highScore: 'High Score',
+    playAgain: 'Play Again',
+    selectMin: 'Select at least 1 Kana row!',
+    noData: 'No Data',
+    tabKana: 'Kana', tabVocab: 'Vocab', tabKanji: 'Kanji',
+    vocabTitle: 'N5 Vocabulary', kanjiTitle: 'N5 Kanji', meaning: 'Meaning',
+  }
+};
+
 const SelectButton = ({children,isSelected,onClick,className=''}) => (
   <button onClick={onClick} className={`m-0.5 sm:m-1 px-1 py-1 sm:py-2.5 font-bold text-center text-[13px] sm:text-base cursor-pointer transition-all border-[3px] rounded-lg outline-none hover:ring-4 ring-green-400 dark:ring-green-500 min-h-[44px] flex items-center justify-center ${isSelected ? 'bg-[#3182ce] text-white border-[#3182ce] dark:bg-blue-600 dark:border-blue-600 shadow-md' : 'bg-white text-[#3182ce] border-[#3182ce] dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700'} ${className}`}>{children}</button>
 );
 
-const SettingsBar = ({settings,toggleSound,toggleTheme}) => (
-  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-3 z-50">
+const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang}) => (
+  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2 sm:gap-3 z-50">
+    <button onClick={toggleLang} className="px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full shadow-sm transition-all focus:outline-none hover:scale-105 active:scale-95 text-xs sm:text-sm font-bold border border-gray-200 dark:border-gray-600">
+      {settings.lang==='vi'?'VN':'EN'}
+    </button>
     <button onClick={toggleSound} className={`p-2.5 rounded-full shadow-sm transition-all focus:outline-none ${settings.isSound?'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300':'bg-white text-gray-400 dark:bg-gray-800 dark:text-gray-500'} hover:scale-105 active:scale-95`}>
       {settings.isSound ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg>}
     </button>
@@ -136,15 +270,17 @@ const SettingsBar = ({settings,toggleSound,toggleTheme}) => (
 function App() {
   const [settings, setSettings] = React.useState(() => {
     const s = localStorage.getItem(SETTINGS_KEY);
-    if(s) return JSON.parse(s);
-    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false };
+    if(s) { const p=JSON.parse(s); if(!p.lang) p.lang='vi'; return p; }
+    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi' };
   });
+  const t = T[settings.lang] || T.vi;
   React.useEffect(() => {
     settings.isDark ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   }, [settings]);
   const toggleTheme = () => setSettings(s => ({...s, isDark:!s.isDark}));
   const toggleSound = () => setSettings(s => ({...s, isSound:!s.isSound}));
+  const toggleLang = () => setSettings(s => ({...s, lang:s.lang==='vi'?'en':'vi'}));
 
   const [kanaData, setKanaData] = React.useState(() => {
     const sd = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kana_weakness_data');
@@ -153,14 +289,40 @@ function App() {
   });
   React.useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(kanaData)); }, [kanaData]);
 
+  const [vocabData, setVocabData] = React.useState(() => {
+    const sd = localStorage.getItem('vocab_data_v1');
+    if(sd) { try { const p=JSON.parse(sd); return defaultVocabData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    return defaultVocabData;
+  });
+  React.useEffect(() => { localStorage.setItem('vocab_data_v1', JSON.stringify(vocabData)); }, [vocabData]);
+
+  const [kanjiData, setKanjiData] = React.useState(() => {
+    const sd = localStorage.getItem('kanji_data_v1');
+    if(sd) { try { const p=JSON.parse(sd); return defaultKanjiData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    return defaultKanjiData;
+  });
+  React.useEffect(() => { localStorage.setItem('kanji_data_v1', JSON.stringify(kanjiData)); }, [kanjiData]);
+
   const [appState, setAppState] = React.useState('menu');
+  const [studyMode, setStudyMode] = React.useState('kana');
   const [selectedAlphabet, setSelectedAlphabet] = React.useState('hiragana');
   const [selectedGroups, setSelectedGroups] = React.useState({ hiragana: [], katakana: [] });
+  const [selectedVocabGroups, setSelectedVocabGroups] = React.useState([]);
+  const [selectedKanjiGroups, setSelectedKanjiGroups] = React.useState([]);
 
   const activeKanaList = React.useMemo(() => {
+    if(studyMode==='vocab') return vocabData.filter(k => selectedVocabGroups.includes(k.groupId));
+    if(studyMode==='kanji') return kanjiData.filter(k => selectedKanjiGroups.includes(k.groupId));
     const g = selectedGroups[selectedAlphabet]||[];
     return kanaData.filter(k => k.alphabet===selectedAlphabet && g.includes(k.groupId));
-  }, [kanaData, selectedAlphabet, selectedGroups]);
+  }, [studyMode, kanaData, vocabData, kanjiData, selectedAlphabet, selectedGroups, selectedVocabGroups, selectedKanjiGroups]);
+
+  // Unified data setter based on study mode
+  const setActiveData = (updater) => {
+    if(studyMode==='vocab') setVocabData(updater);
+    else if(studyMode==='kanji') setKanjiData(updater);
+    else setKanaData(updater);
+  };
 
   // RANDOM QUIZ STATE
   const [practiceMode, setPracticeMode] = React.useState('normal');
@@ -171,6 +333,20 @@ function App() {
   const inputRef = React.useRef('');
   const statusRef = React.useRef('idle');
   const currentKanaRef = React.useRef(null);
+
+  // TIME ATTACK STATE
+  const [taScore, setTaScore] = React.useState(0);
+  const [taTimeLeft, setTaTimeLeft] = React.useState(60);
+  const [taRunning, setTaRunning] = React.useState(false);
+  const [taFinished, setTaFinished] = React.useState(false);
+  const [taHighScore, setTaHighScore] = React.useState(()=>parseInt(localStorage.getItem(HIGHSCORE_KEY))||0);
+  const [taInputValue, setTaInputValue] = React.useState('');
+  const [taStatus, setTaStatus] = React.useState('idle');
+  const [taCurrentIdx, setTaCurrentIdx] = React.useState(0);
+  const [showConfetti, setShowConfetti] = React.useState(false);
+  const taInputRef = React.useRef('');
+  const taStatusRef = React.useRef('idle');
+  const taScoreRef = React.useRef(0);
 
   // FILL ALL STATE
   const [fillCheckMode, setFillCheckMode] = React.useState('instant');
@@ -209,10 +385,30 @@ function App() {
 
   const genNext = (pool) => { if(!pool||pool.length===0) return 0; let n; do{n=Math.floor(Math.random()*pool.length)}while(n===currentIndex&&pool.length>1); return n; };
 
+  const genWeightedNext = (pool, curIdx) => {
+    if(!pool||pool.length===0) return 0;
+    if(pool.length===1) return 0;
+    const weights = pool.map(k => 1 + (k.mistakeCount||0) * 3);
+    const total = weights.reduce((a,b) => a+b, 0);
+    let attempts = 0;
+    while(attempts < 20) {
+      let r = Math.random() * total, acc = 0;
+      for(let i=0; i<pool.length; i++) { acc += weights[i]; if(r <= acc) { if(i !== curIdx || pool.length === 1) return i; break; } }
+      attempts++;
+    }
+    return genNext(pool);
+  };
+
   const startRandomQuiz = () => {
-    if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
+    if(activeKanaList.length===0){alert("Chon it nhat 1 hang Kana!");return;}
     setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle');
-    setCurrentIndex(Math.floor(Math.random()*activeKanaList.length)); setAppState('quiz');
+    setCurrentIndex(genWeightedNext(activeKanaList, -1)); setAppState('quiz');
+  };
+  const startTimeAttack = () => {
+    if(activeKanaList.length===0){alert("Chon it nhat 1 hang Kana!");return;}
+    setTaScore(0); taScoreRef.current=0; setTaTimeLeft(60); setTaRunning(true); setTaFinished(false);
+    setTaInputValue(''); taInputRef.current=''; setTaStatus('idle'); taStatusRef.current='idle';
+    setTaCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('timeattack');
   };
   const startFillAll = () => {
     if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
@@ -223,12 +419,12 @@ function App() {
   const handleCorrectRandom = () => {
     setStatus('correct'); setCorrectCount(p=>p+1);
     let pool=activeQuizData;
-    if(currentKana&&currentKana.mistakeCount>0){ const nd=kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount-1}:k); setKanaData(nd); const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
-    setTimeout(()=>{ setInputValue(''); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genNext(pool)); setStatus('idle'); },250);
+    if(currentKana&&currentKana.mistakeCount>0){ const nd=kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount-1}:k); setActiveData(nd); const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
+    setTimeout(()=>{ setInputValue(''); if(practiceMode==='practice_mistakes'&&pool.length===0)setPracticeMode('normal'); else setCurrentIndex(genWeightedNext(pool, currentIndex)); setStatus('idle'); },250);
   };
   const handleErrorRandom = () => {
     setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
-    if(currentKana){ setKanaData(kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
+    if(currentKana){ setActiveData(kanaData.map(k=>k.id===currentKana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
     setTimeout(()=>{setStatus('idle');setInputValue('');},400);
   };
 
@@ -246,6 +442,67 @@ function App() {
     return ()=>document.removeEventListener('keydown',handler,true);
   }, [appState,currentKana,kanaData,practiceMode,selectedAlphabet,selectedGroups,settings.isSound]);
 
+  // --- TIME ATTACK TIMER ---
+  React.useEffect(() => {
+    if(appState!=='timeattack'||!taRunning) return;
+    if(taTimeLeft<=0){ setTaRunning(false); setTaFinished(true);
+      const score = taScoreRef.current;
+      if(score > taHighScore) { setTaHighScore(score); localStorage.setItem(HIGHSCORE_KEY, score.toString()); setShowConfetti(true); setTimeout(()=>setShowConfetti(false),4000); }
+      return;
+    }
+    const t = setTimeout(()=>setTaTimeLeft(p=>p-1),1000);
+    return ()=>clearTimeout(t);
+  },[appState,taRunning,taTimeLeft]);
+
+  // TIME ATTACK KEYDOWN
+  React.useEffect(() => {
+    if(appState!=='timeattack'||!taRunning) return;
+    const handler = (e) => {
+      if(taStatusRef.current!=='idle') return;
+      const kana = activeKanaList[taCurrentIdx]; if(!kana) return;
+      if(e.key==='Backspace'){e.preventDefault(); setTaInputValue(p=>{const v=p.slice(0,-1);taInputRef.current=v;return v;}); return;}
+      if(e.key==='Enter'){e.preventDefault();
+        if(taInputRef.current.length>0&&!checkAns(taInputRef.current,kana)){
+          setTaStatus('error'); taStatusRef.current='error';
+          setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+          setTimeout(()=>{setTaStatus('idle');taStatusRef.current='idle';setTaInputValue('');taInputRef.current='';},300);
+        }
+        return;
+      }
+      if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){
+        e.preventDefault();e.stopPropagation();
+        const nv=taInputRef.current+e.key.toLowerCase();
+        setTaInputValue(nv); taInputRef.current=nv;
+        if(checkAns(nv,kana)){
+          setTaStatus('correct'); taStatusRef.current='correct';
+          setTaScore(p=>{const ns=p+1;taScoreRef.current=ns;return ns;});
+          if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+          speakKana(kana.question,settings.isSound);
+          setTimeout(()=>{
+            setTaInputValue('');taInputRef.current='';
+            setTaCurrentIdx(genWeightedNext(activeKanaList,taCurrentIdx));
+            setTaStatus('idle');taStatusRef.current='idle';
+          },200);
+        }
+      }
+    };
+    document.addEventListener('keydown',handler,true);
+    return ()=>document.removeEventListener('keydown',handler,true);
+  },[appState,taRunning,activeKanaList,taCurrentIdx,settings.isSound]);
+
+  // HIDDEN INPUT FOR MOBILE KEYBOARD
+  const mobileInputRef = React.useRef(null);
+  const focusMobileInput = () => { if(mobileInputRef.current) mobileInputRef.current.focus(); };
+  const handleMobileInput = (e) => {
+    const val = e.target.value;
+    e.target.value = '';
+    if(!val) return;
+    const chars = val.toLowerCase().replace(/[^a-z]/g,'');
+    for(const ch of chars){
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:ch,bubbles:true}));
+    }
+  };
+
   const togglePracticeMode = () => {
     if(practiceMode==='normal'&&mistakesPool.length>0){setPracticeMode('practice_mistakes');setCurrentIndex(genNext(mistakesPool));setStatus('idle');setInputValue('');}
     else{setPracticeMode('normal');setCurrentIndex(genNext(activeKanaList));setStatus('idle');setInputValue('');}
@@ -254,18 +511,18 @@ function App() {
   // Auto-check a card when leaving it (instant mode)
   const autoCheckCard = (idx) => {
     if(fillCheckMode!=='instant') return;
-    const kana = activeKanaList[idx]; if(!kana) return;
+    const kana = shuffledFillList[idx]; if(!kana) return;
     const val = fillAnswersRef.current[kana.id]||'';
     const res = fillResults[kana.id];
     if(res==='correct'||res==='wrong') return; // already checked
     if(val.length===0) return; // empty, skip
     if(checkAns(val,kana)){
       setFillResults(r=>({...r,[kana.id]:'correct'}));
-      if(kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+      if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
       speakKana(kana.question,settings.isSound);
     } else {
       setFillResults(r=>({...r,[kana.id]:'wrong'}));
-      setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+      setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
     }
   };
 
@@ -280,13 +537,13 @@ function App() {
     if(appState!=='fill'||fillFinished) return;
     const handler = (e) => {
       const idx = focusedCardIdxRef.current;
-      const kana = activeKanaList[idx]; if(!kana) return;
+      const kana = shuffledFillList[idx]; if(!kana) return;
       const ans = fillAnswersRef.current;
       const curVal = ans[kana.id]||'';
       const res = fillResults[kana.id];
       // If card already resolved, allow navigation only
       if(fillCheckMode==='instant' && (res==='correct'||res==='wrong')) {
-        if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);}
+        if(e.key==='Tab'||e.key==='Enter'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,shuffledFillList.length-1);moveFocusTo(ni);}
         return;
       }
       if(e.key==='Backspace'){e.preventDefault();
@@ -294,10 +551,10 @@ function App() {
         if(fillCheckMode==='instant'&&res==='wrong') setFillResults(r=>({...r,[kana.id]:null}));
         const nv=curVal.slice(0,-1);const na={...ans,[kana.id]:nv};setFillAnswers(na);fillAnswersRef.current=na;return;
       }
-      if(e.key==='Tab'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);return;}
+      if(e.key==='Tab'){e.preventDefault();const ni=e.shiftKey?Math.max(0,idx-1):Math.min(idx+1,shuffledFillList.length-1);moveFocusTo(ni);return;}
       if(e.key==='Enter'){
         e.preventDefault();
-        if(fillCheckMode==='instant') { autoCheckCard(idx); const ni=Math.min(idx+1,activeKanaList.length-1); setTimeout(()=>moveFocusTo(ni),200); }
+        if(fillCheckMode==='instant') { autoCheckCard(idx); const ni=Math.min(idx+1,shuffledFillList.length-1); setTimeout(()=>moveFocusTo(ni),200); }
         return;
       }
       if(e.key.length===1&&/^[a-zA-Z]$/.test(e.key)){
@@ -306,24 +563,18 @@ function App() {
         if(fillCheckMode==='instant'&&res==='wrong') setFillResults(r=>({...r,[kana.id]:null}));
         const nv=curVal+e.key.toLowerCase();
         const na={...ans,[kana.id]:nv};setFillAnswers(na);fillAnswersRef.current=na;
-        if(fillCheckMode==='instant'&&checkAns(nv,kana)){
-          setFillResults(r=>({...r,[kana.id]:'correct'}));
-          if(kana&&kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
-          speakKana(kana.question,settings.isSound);
-          setTimeout(()=>{const ni=Math.min(idx+1,activeKanaList.length-1);moveFocusTo(ni);},300);
-        }
       }
     };
     document.addEventListener('keydown',handler,true);
     return ()=>document.removeEventListener('keydown',handler,true);
-  }, [appState,fillCheckMode,fillFinished,activeKanaList,fillResults,settings.isSound]);
+  }, [appState,fillCheckMode,fillFinished,shuffledFillList,fillResults,settings.isSound]);
 
   const handleFinishAll = () => {
     const results = {};
-    activeKanaList.forEach(kana => {
+    shuffledFillList.forEach(kana => {
       const val = fillAnswers[kana.id]||'';
-      if(checkAns(val,kana)) { results[kana.id]='correct'; if(kana.mistakeCount>0) setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k)); }
-      else { results[kana.id]='wrong'; setKanaData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
+      if(checkAns(val,kana)) { results[kana.id]='correct'; if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k)); }
+      else { results[kana.id]='wrong'; setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k)); }
     });
     setFillResults(results); setFillFinished(true);
   };
@@ -336,31 +587,58 @@ function App() {
   if(appState==='menu') {
     return (
       <div className="min-h-screen flex flex-col items-center px-4 py-16 sm:p-8">
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-6 tracking-tight">Kana Select</h1>
-        <div className="flex w-full max-w-5xl gap-2 mt-2 sm:mt-6 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
-          <SelectButton isSelected={selectedAlphabet==='hiragana'} onClick={()=>setSelectedAlphabet('hiragana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Hiragana (ひらがな)</SelectButton>
-          <SelectButton isSelected={selectedAlphabet==='katakana'} onClick={()=>setSelectedAlphabet('katakana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Katakana (カタカナ)</SelectButton>
-        </div>
-        <div className="w-full max-w-5xl mt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
-          <SelectButton isSelected={isAllSelected()} onClick={toggleAllKana} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">Chọn Toàn Bộ / Bỏ Chọn</SelectButton>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mt-8">
-          {['main','dakuten','combination'].map(cat => (
-            <div key={cat} className="flex flex-col bg-white dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center dark:text-gray-200">{cat==='main'?'Main Kana':cat==='dakuten'?'Dakuten Kana':'Combo Kana'}</h2>
-              <SelectButton isSelected={isCategorySelected(cat)} onClick={()=>toggleAllCategory(cat)} className="!mb-4 !border-dashed">All {cat==='main'?'Main':cat==='dakuten'?'Dakuten':'Combo'} Kana</SelectButton>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {KANA_DEF[selectedAlphabet][cat].map(g => <SelectButton key={g.id} isSelected={selectedGroups[selectedAlphabet].includes(g.id)} onClick={()=>toggleGroup(g.id)}>{g.label}</SelectButton>)}
-              </div>
-            </div>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang}/>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-4 tracking-tight">{studyMode==='kana'?t.selectTitle:studyMode==='vocab'?t.vocabTitle:t.kanjiTitle}</h1>
+        <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6">
+          {[['kana','tabKana'],['vocab','tabVocab'],['kanji','tabKanji']].map(([m,k])=>(
+            <button key={m} onClick={()=>setStudyMode(m)} className={`flex-1 py-3 rounded-lg font-bold text-sm sm:text-base transition-all ${studyMode===m?'bg-white dark:bg-gray-700 text-[#3182ce] dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>{t[k]}</button>
           ))}
         </div>
-        <div className="w-full max-w-lg flex flex-col sm:flex-row gap-4 mt-10 sm:mt-12 px-2">
-          <button onClick={startRandomQuiz} className="flex-1 bg-[#3182ce] text-white rounded-2xl px-6 py-4 font-extrabold text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center">🎲 Random Quiz</button>
-          <button onClick={startFillAll} className="flex-1 bg-emerald-500 text-white rounded-2xl px-6 py-4 font-extrabold text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center">📝 Điền Hết</button>
+        {studyMode==='kana' && (<>
+          <div className="flex w-full max-w-5xl gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
+            <SelectButton isSelected={selectedAlphabet==='hiragana'} onClick={()=>setSelectedAlphabet('hiragana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Hiragana (ひらがな)</SelectButton>
+            <SelectButton isSelected={selectedAlphabet==='katakana'} onClick={()=>setSelectedAlphabet('katakana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Katakana (カタカナ)</SelectButton>
+          </div>
+          <div className="w-full max-w-5xl mt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
+            <SelectButton isSelected={isAllSelected()} onClick={toggleAllKana} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mt-8">
+            {['main','dakuten','combination'].map(cat => (
+              <div key={cat} className="flex flex-col bg-white dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50">
+                <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center dark:text-gray-200">{cat==='main'?t.mainKana:cat==='dakuten'?t.dakutenKana:t.comboKana}</h2>
+                <SelectButton isSelected={isCategorySelected(cat)} onClick={()=>toggleAllCategory(cat)} className="!mb-4 !border-dashed">{cat==='main'?t.allMain:cat==='dakuten'?t.allDakuten:t.allCombo}</SelectButton>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {KANA_DEF[selectedAlphabet][cat].map(g => <SelectButton key={g.id} isSelected={selectedGroups[selectedAlphabet].includes(g.id)} onClick={()=>toggleGroup(g.id)}>{g.label}</SelectButton>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>)}
+        {studyMode==='vocab' && (
+          <div className="w-full max-w-5xl">
+            <div className="mb-4"><SelectButton isSelected={selectedVocabGroups.length===VOCAB_CATS.length} onClick={()=>setSelectedVocabGroups(selectedVocabGroups.length===VOCAB_CATS.length?[]:VOCAB_CATS.map(c=>VOCAB_N5[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {VOCAB_CATS.map(c=>{const g=VOCAB_N5[c]; return <SelectButton key={g.id} isSelected={selectedVocabGroups.includes(g.id)} onClick={()=>setSelectedVocabGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
+            </div>
+          </div>
+        )}
+        {studyMode==='kanji' && (
+          <div className="w-full max-w-5xl">
+            <div className="mb-4"><SelectButton isSelected={selectedKanjiGroups.length===KANJI_CATS.length} onClick={()=>setSelectedKanjiGroups(selectedKanjiGroups.length===KANJI_CATS.length?[]:KANJI_CATS.map(c=>KANJI_N5[c].id))} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {KANJI_CATS.map(c=>{const g=KANJI_N5[c]; return <SelectButton key={g.id} isSelected={selectedKanjiGroups.includes(g.id)} onClick={()=>setSelectedKanjiGroups(p=>p.includes(g.id)?p.filter(x=>x!==g.id):[...p,g.id])}>{g.label} ({g.items.length})</SelectButton>;})}
+            </div>
+          </div>
+        )}
+        <div className="w-full max-w-xl flex flex-col sm:flex-row gap-3 mt-10 sm:mt-12 px-2">
+          <button onClick={startRandomQuiz} className="flex-1 bg-[#3182ce] text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center">&#127922; {t.random}</button>
+          <button onClick={startFillAll} className="flex-1 bg-emerald-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center">&#128221; {t.fillAll}</button>
+          <button onClick={startTimeAttack} className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-orange-600 hover:to-red-600 active:scale-95 transition-all outline-none text-center">&#9201;&#65039; {t.timeAttack}</button>
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-600 mt-3 text-center">Chọn hàng chữ rồi bấm một trong hai chế độ</p>
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-3 text-center">
+          {t.srsHint}
+          {taHighScore>0 && <span className="ml-2">&#8226; &#127942; {t.record}: {taHighScore}</span>}
+        </p>
       </div>
     );
   }
@@ -372,28 +650,78 @@ function App() {
     else if(status==='error'){iBorder="border-red-500 bg-red-50 dark:bg-red-900/30 text-red-500";tClass="text-red-500 dark:text-red-400";iAnim="animate-shake";cBorder="border-red-300 dark:border-red-700/50";}
     if(!currentKana) return <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-500"><div>No Data</div><button onClick={backToMenu} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Menu</button></div>;
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1}>
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
+        <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-300 ease-out ${practiceMode==='practice_mistakes'?'bg-orange-400':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width:`${practiceMode==='practice_mistakes'?100:progressPercent}%`}}></div></div>
         <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center">
           <button onClick={togglePracticeMode} disabled={practiceMode==='normal'&&mistakesPool.length===0} className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all border ${practiceMode==='practice_mistakes'?'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800':mistakesPool.length>0?'text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm':'text-gray-300 dark:text-gray-600 border-transparent opacity-50'}`}>
-            {practiceMode==='practice_mistakes'?'🎯 Sửa Lỗi':`Ôn tập ${mistakesPool.length} Lỗi`}
+            {practiceMode==='practice_mistakes'?`\uD83C\uDFAF ${t.fixMistakes}`:`${t.reviewMistakes} ${mistakesPool.length}`}
           </button>
-          <span className={`px-2 py-1 rounded-full bg-gray-100/50 dark:bg-gray-800/50 ${practiceMode==='practice_mistakes'?'text-orange-500':'text-gray-400 dark:text-gray-500'} ${status==='correct'?'!text-blue-500 font-bold':''}`}>{practiceMode==='practice_mistakes'?`${mistakesPool.length} Cards`:`${correctCount} / ${goalCount}`}</span>
+          <span className={`px-2 py-1 rounded-full bg-gray-100/50 dark:bg-gray-800/50 ${practiceMode==='practice_mistakes'?'text-orange-500':'text-gray-400 dark:text-gray-500'} ${status==='correct'?'!text-blue-500 font-bold':''}`}>{practiceMode==='practice_mistakes'?`${mistakesPool.length} ${t.cards}`:`${correctCount} / ${goalCount}`}</span>
         </div>
         <div className="w-full max-w-[320px] flex flex-col items-center mt-20 sm:mt-16">
           <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex flex-col items-center justify-center mb-6 sm:mb-10 transition-all duration-200 relative ${cBorder} ${status==='correct'?'scale-[1.03] shadow-lg shadow-green-100/50 dark:shadow-none':'hover:scale-[1.01]'}`}>
-            {currentKana.mistakeCount>0&&practiceMode==='normal'&&<div className="absolute top-5 right-5 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800">{currentKana.mistakeCount} Lỗi</div>}
-            <span className="text-[140px] sm:text-[160px] leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm">{currentKana.question}</span>
+            {currentKana.mistakeCount>0&&practiceMode==='normal'&&<div className="absolute top-5 right-5 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800">{currentKana.mistakeCount} {t.mistakes}</div>}
+            <span className={`leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm ${currentKana.meaning?'text-[80px] sm:text-[100px]':'text-[140px] sm:text-[160px]'}`}>{currentKana.question}</span>
+            {currentKana.meaning && status==='correct' && <div className="text-lg sm:text-xl text-green-600 dark:text-green-400 font-bold mt-2 pop-in">{currentKana.meaning[settings.lang]||currentKana.meaning.en}</div>}
+            {currentKana.meaning && status!=='correct' && <div className="text-sm text-gray-400 dark:text-gray-500 mt-2">{t.meaning}: ?</div>}
           </div>
           <div className={`w-full relative ${iAnim} px-2 sm:px-0`}>
             <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${iBorder} ${tClass}`}>
-              {inputValue||<span className="font-normal text-gray-300 dark:text-gray-500">Romaji?</span>}
+              {inputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.romaji}</span>}
             </div>
-            <div className="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">Gõ phím trực tiếp &#8226; Unikey không ảnh hưởng</div>
+            <div className="text-center text-xs text-gray-400 dark:text-gray-600 mt-2">{t.typeHere}</div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+
+  // --- TIME ATTACK RENDER ---
+  if(appState==='timeattack') {
+    const taKana = activeKanaList[taCurrentIdx]||activeKanaList[0];
+    const timerPct = (taTimeLeft/60)*100;
+    const isUrgent = taTimeLeft<=10;
+    let taBorder='border-gray-200 dark:border-gray-700 dark:bg-gray-800', taTxt='text-gray-800 dark:text-white', taAnim='', taCard='border-gray-100 dark:border-gray-700';
+    if(taStatus==='correct'){taBorder='border-green-500 bg-green-50 dark:bg-green-900/30';taTxt='text-green-600 dark:text-green-400';taCard='border-green-400';}
+    else if(taStatus==='error'){taBorder='border-red-500 bg-red-50 dark:bg-red-900/30';taTxt='text-red-500';taAnim='animate-shake';taCard='border-red-300';}
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
+        <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang}/>
+        <button onClick={()=>{setTaRunning(false);backToMenu();}} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
+        {showConfetti && Array.from({length:60}).map((_,i)=><div key={i} className="confetti-piece" style={{left:`${Math.random()*100}%`,background:`hsl(${Math.random()*360},80%,60%)`,borderRadius:Math.random()>0.5?'50%':'0',width:`${6+Math.random()*8}px`,height:`${6+Math.random()*8}px`,animationDelay:`${Math.random()*2}s`,animationDuration:`${2+Math.random()*2}s`}}/>)}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-1000 ease-linear ${isUrgent?'bg-red-500':'bg-gradient-to-r from-orange-400 to-red-500'}`} style={{width:`${timerPct}%`}}/></div>
+        {taFinished ? (
+          <div className="flex flex-col items-center gap-6 pop-in">
+            <div className="text-7xl sm:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">{taScore}</div>
+            <div className="text-xl font-bold text-gray-500 dark:text-gray-400">{t.scoreIn60}</div>
+            {taScore>=taHighScore&&taScore>0&&<div className="text-2xl font-extrabold text-yellow-500 pop-in">&#127942; {t.newRecord}</div>}
+            <div className="text-sm text-gray-400 dark:text-gray-500">{t.highScore}: {taHighScore}</div>
+            <div className="flex gap-4 mt-4">
+              <button onClick={startTimeAttack} className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">&#128260; {t.playAgain}</button>
+              <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">{t.menu}</button>
+            </div>
+          </div>
+        ) : taKana ? (
+          <div className="w-full max-w-[320px] flex flex-col items-center mt-16 sm:mt-12">
+            <div className="flex items-center justify-between w-full mb-4 px-2">
+              <div className={`text-4xl sm:text-5xl font-black tabular-nums ${isUrgent?'text-red-500 animate-pulse':'text-orange-500'}`}>{taTimeLeft}<span className="text-lg font-bold">s</span></div>
+              <div className="text-4xl sm:text-5xl font-black text-[#3182ce] dark:text-blue-400 tabular-nums">{taScore}</div>
+            </div>
+            <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex items-center justify-center mb-6 sm:mb-10 transition-all ${taCard} ${taStatus==='correct'?'scale-[1.03]':''}`}>
+              <span className="text-[140px] sm:text-[160px] leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm">{taKana.question}</span>
+            </div>
+            <div className={`w-full relative ${taAnim} px-2 sm:px-0`}>
+              <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${taBorder} ${taTxt}`}>
+                {taInputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.typefast}</span>}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -403,29 +731,30 @@ function App() {
     const correctCnt = Object.values(fillResults).filter(r=>r==='correct').length;
     const wrongCnt = Object.values(fillResults).filter(r=>r==='wrong').length;
     return (
-      <div className="min-h-screen flex flex-col items-center px-3 sm:px-6 py-4 sm:py-8 relative">
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme}/>
+      <div className="min-h-screen flex flex-col items-center px-3 sm:px-6 py-4 sm:py-8 relative" onClick={focusMobileInput}>
+        <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
 
-        <h2 className="text-xl sm:text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-12 sm:mt-4 mb-2">Điền Romaji cho các chữ Kana</h2>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-12 sm:mt-4 mb-2">{t.fillTitle}</h2>
 
         {!fillFinished && (
           <div className="flex gap-2 mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-            <button onClick={()=>{setFillCheckMode('instant');setFillResults({});setFillAnswers({});}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='instant'?'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>Check Ngay</button>
-            <button onClick={()=>{setFillCheckMode('finish');setFillResults({});setFillAnswers({});}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='finish'?'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>Điền Xong Check</button>
+            <button onClick={()=>{setFillCheckMode('instant');setFillResults({});setFillAnswers({});setShuffledFillList(shuffle(activeKanaList));}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='instant'?'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>{t.checkNow}</button>
+            <button onClick={()=>{setFillCheckMode('finish');setFillResults({});setFillAnswers({});setShuffledFillList(shuffle(activeKanaList));}} className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${fillCheckMode==='finish'?'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-300 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>{t.finishCheck}</button>
           </div>
         )}
 
         {fillFinished && (
           <div className="mb-4 text-center pop-in">
-            <span className="text-green-500 font-bold text-lg mr-4">✓ {correctCnt} Đúng</span>
-            <span className="text-red-500 font-bold text-lg">✗ {wrongCnt} Sai</span>
-            <div className="text-gray-400 dark:text-gray-500 text-sm mt-1">Tổng: {activeKanaList.length} chữ &#8226; Tỷ lệ: {Math.round(correctCnt/Math.max(activeKanaList.length,1)*100)}%</div>
+            <span className="text-green-500 font-bold text-lg mr-4">✓ {correctCnt} {t.correct}</span>
+            <span className="text-red-500 font-bold text-lg">✗ {wrongCnt} {t.wrong}</span>
+            <div className="text-gray-400 dark:text-gray-500 text-sm mt-1">{t.total}: {shuffledFillList.length} &#8226; {t.ratio}: {Math.round(correctCnt/Math.max(shuffledFillList.length,1)*100)}%</div>
           </div>
         )}
 
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3 w-full max-w-6xl mb-8">
-          {activeKanaList.map((kana, idx) => {
+          {shuffledFillList.map((kana, idx) => {
             const val = fillAnswers[kana.id]||'';
             const res = fillResults[kana.id];
             const isFocused = idx===focusedCardIdx && !fillFinished;
@@ -435,7 +764,15 @@ function App() {
             if(res==='correct'){cardBg='bg-green-500 dark:bg-green-600';inputBg='bg-green-50 dark:bg-green-900/50';inputText='text-green-700 dark:text-green-300';}
             else if(res==='wrong'){cardBg='bg-red-500 dark:bg-red-600';inputBg='bg-red-50 dark:bg-red-900/50';inputText='text-red-600 dark:text-red-300';}
             return (
-              <div key={kana.id} onClick={()=>{if(!fillFinished){moveFocusTo(idx);}}} className={`flex flex-col items-center rounded-xl overflow-hidden cursor-pointer transition-all shadow-sm ${cardBg} ${isFocused?'ring-4 ring-yellow-400 dark:ring-yellow-300 scale-105':''} ${res==='wrong'?'animate-shake':''}`}>
+              <div key={kana.id} onClick={()=>{
+                if(fillFinished) return;
+                if(fillCheckMode==='instant' && res==='correct') return;
+                if(fillCheckMode==='instant' && res==='wrong') {
+                  setFillResults(r=>({...r,[kana.id]:null}));
+                  const na={...fillAnswers,[kana.id]:''};setFillAnswers(na);fillAnswersRef.current=na;
+                }
+                moveFocusTo(idx);
+              }} className={`flex flex-col items-center rounded-xl overflow-hidden transition-all shadow-sm ${res==='correct'?'cursor-default':'cursor-pointer'} ${cardBg} ${isFocused?'ring-4 ring-yellow-400 dark:ring-yellow-300 scale-105':''} ${res==='wrong'?'animate-shake':''}`}>
                 <div className="py-3 sm:py-4 flex items-center justify-center w-full">
                   <span className="text-3xl sm:text-4xl text-white kana-text font-bold select-none drop-shadow">{kana.question}</span>
                 </div>
@@ -451,15 +788,15 @@ function App() {
         </div>
 
         {!fillFinished && fillCheckMode==='finish' && (
-          <button onClick={handleFinishAll} className="bg-emerald-500 text-white rounded-2xl px-10 py-4 font-extrabold text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none mb-8">✅ Finish Quiz</button>
+          <button onClick={handleFinishAll} className="bg-emerald-500 text-white rounded-2xl px-10 py-4 font-extrabold text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none mb-8">{t.finishQuiz}</button>
         )}
         {fillFinished && (
           <div className="flex gap-4 mb-8">
-            <button onClick={()=>{setFillAnswers({});setFillResults({});setFillFinished(false);setFocusedCardIdx(0);focusedCardIdxRef.current=0;}} className="bg-[#3182ce] text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-blue-700 active:scale-95 transition-all">🔄 Làm Lại</button>
-            <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all">Menu</button>
+            <button onClick={()=>{setFillAnswers({});setFillResults({});setFillFinished(false);setFocusedCardIdx(0);focusedCardIdxRef.current=0;setShuffledFillList(shuffle(activeKanaList));}} className="bg-[#3182ce] text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-blue-700 active:scale-95 transition-all">🔄 {t.retry}</button>
+            <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all">{t.menu}</button>
           </div>
         )}
-        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">Bấm vào thẻ hoặc dùng Tab để chọn &#8226; Gõ phím trực tiếp</p>
+        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mb-4">{t.tapOrTab}</p>
       </div>
     );
   }
