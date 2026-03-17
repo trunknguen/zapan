@@ -8,6 +8,7 @@
   <meta property="og:description" content="Học tiếng Nhật cùng nhau nào! 🇯🇵" />
   <meta name="description" content="Học tiếng Nhật cùng nhau nào! 🇯🇵" />
   <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Za Pan" />
@@ -20,6 +21,9 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
     .kana-text { font-family: 'Noto Sans JP', sans-serif; }
@@ -35,6 +39,23 @@
 <body class="bg-[#fcfcfc] dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased transition-colors duration-300">
 <div id="root"></div>
 <script type="text/babel">
+// ===== FIREBASE CONFIG =====
+// Bạn thay đổi các giá trị bên dưới bằng thông tin từ Firebase Console của bạn
+const firebaseConfig = {
+  apiKey: "AIzaSyBe_Pv9jV70ttCsEOif4aJIirXHAGFnAPU",
+  authDomain: "zapan-app.firebaseapp.com",
+  projectId: "zapan-app",
+  storageBucket: "zapan-app.firebasestorage.app",
+  messagingSenderId: "1041934936068",
+  appId: "1:1041934936068:web:6d3eb08d5a9a98074bed51",
+  measurementId: "G-FPGZ5JYHWE"
+};
+const fbApp = firebase.initializeApp(firebaseConfig);
+const fbAuth = firebase.auth();
+const fbDb = firebase.firestore();
+// Enable offline persistence for Firestore
+fbDb.enablePersistence({ synchronizeTabs: true }).catch(e => console.log('Firestore offline:', e.code));
+
 const STORAGE_KEY='kana_weakness_data_v2', SETTINGS_KEY='kana_settings_v1', HIGHSCORE_KEY='kana_highscore_v1';
 const KANA_DEF = {
   hiragana: {
@@ -342,11 +363,11 @@ const SelectButton = ({children,isSelected,onClick,className=''}) => (
   <button onClick={onClick} className={`m-0.5 sm:m-1 px-1 py-1 sm:py-2.5 font-bold text-center text-[13px] sm:text-base cursor-pointer transition-all border-[3px] rounded-lg outline-none hover:ring-4 ring-green-400 dark:ring-green-500 min-h-[44px] flex items-center justify-center ${isSelected ? 'bg-[#3182ce] text-white border-[#3182ce] dark:bg-blue-600 dark:border-blue-600 shadow-md' : 'bg-white text-[#3182ce] border-[#3182ce] dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700'} ${className}`}>{children}</button>
 );
 
-const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,currentUser,onLogout,onShowTutorial}) => (
+const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,onLogout,onShowTutorial}) => (
   <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2 sm:gap-3 z-50 items-center">
-    {currentUser && (
+    {displayName && (
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
-        <span className="text-xs sm:text-sm font-bold text-[#3182ce] dark:text-blue-400">{currentUser}</span>
+        <span className="text-xs sm:text-sm font-bold text-[#3182ce] dark:text-blue-400">Chào {displayName}</span>
         <button onClick={onLogout} className="text-xs text-gray-400 hover:text-red-500 transition-colors ml-1" title="Đăng xuất">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-1.048a.75.75 0 10-1.06-1.06l-2.25 2.25a.75.75 0 000 1.06l2.25 2.25a.75.75 0 101.06-1.06l-1.048-1.048h9.546A.75.75 0 0019 10z" clipRule="evenodd" /></svg>
         </button>
@@ -661,7 +682,7 @@ function MatchGame({ backToMenu, pool, settings }) {
   );
 }
 
-function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
+function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }) {
   const userKey = isGuest ? '__guest__' : currentUser;
   const STORAGE_KEY = `kana_weakness_data_v2_${userKey}`;
   const SETTINGS_KEY = `kana_settings_v1_${userKey}`;
@@ -685,7 +706,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
   const toggleLang = () => setSettings(s => ({...s, lang:s.lang==='vi'?'en':'vi'}));
 
   const [kanaData, setKanaData] = React.useState(() => {
-    const sd = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kana_weakness_data');
+    const sd = localStorage.getItem(STORAGE_KEY) || (isGuest ? localStorage.getItem('kana_weakness_data') : null);
     if(sd) { try { const p=JSON.parse(sd); return defaultKanaData.map(d=>{const m=p.find(k=>k.question===d.question); return m?{...d,mistakeCount:m.mistakeCount||0,corrects:m.corrects||0}:d;}); } catch(e){} }
     return defaultKanaData;
   });
@@ -751,6 +772,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
   const [taInputValue, setTaInputValue] = React.useState('');
   const [taStatus, setTaStatus] = React.useState('idle');
   const [taCurrentIdx, setTaCurrentIdx] = React.useState(0);
+  const [taPreStart, setTaPreStart] = React.useState(0); // Added
   const [showConfetti, setShowConfetti] = React.useState(false);
   const taInputRef = React.useRef('');
   const taStatusRef = React.useRef('idle');
@@ -765,10 +787,77 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
   const [svInputValue, setSvInputValue] = React.useState('');
   const [svStatus, setSvStatus] = React.useState('idle');
   const [svCurrentIdx, setSvCurrentIdx] = React.useState(0);
+  const [svPreStart, setSvPreStart] = React.useState(0); // Added
+  const [svTimeLeft, setSvTimeLeft] = React.useState(5); // Added
   const svInputRef = React.useRef('');
   const svStatusRef = React.useRef('idle');
   const svStreakRef = React.useRef(0);
   const svLivesRef = React.useRef(3);
+
+  // ===== FIRESTORE CLOUD SYNC =====
+  const [cloudLoaded, setCloudLoaded] = React.useState(isGuest);
+  const syncTimerRef = React.useRef(null);
+
+  const mergeData = (localArr, cloudArr, keyField) => {
+    if (!cloudArr || !Array.isArray(cloudArr)) return localArr;
+    return localArr.map(local => {
+      const cloud = cloudArr.find(c => c[keyField] === local[keyField]);
+      if (!cloud) return local;
+      return {
+        ...local,
+        mistakeCount: Math.max(local.mistakeCount || 0, cloud.mistakeCount || 0),
+        corrects: Math.max(local.corrects || 0, cloud.corrects || 0),
+        interval: Math.max(local.interval || 0, cloud.interval || 0),
+        ease: cloud.ease || local.ease || 2.5,
+        nextReview: Math.max(local.nextReview || 0, cloud.nextReview || 0),
+      };
+    });
+  };
+
+  React.useEffect(() => {
+    if (isGuest || !currentUser) { setCloudLoaded(true); return; }
+    const uid = currentUser;
+    fbDb.collection('users').doc(uid).get().then(doc => {
+      if (doc.exists) {
+        const d = doc.data();
+        if (d.kanaData) setKanaData(prev => mergeData(prev, d.kanaData, 'question'));
+        if (d.vocabData) setVocabData(prev => mergeData(prev, d.vocabData, 'id'));
+        if (d.kanjiData) setKanjiData(prev => mergeData(prev, d.kanjiData, 'id'));
+        if (d.settings) setSettings(prev => ({...prev, ...d.settings}));
+        if (d.taHighScore) setTaHighScore(prev => Math.max(prev, d.taHighScore));
+        if (d.svHighScore) setSvHighScore(prev => Math.max(prev, d.svHighScore));
+      }
+      setCloudLoaded(true);
+    }).catch(e => { console.log('Cloud load error:', e); setCloudLoaded(true); });
+  }, []);
+
+  const saveToCloud = React.useCallback(() => {
+    if (isGuest || !currentUser) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const uid = currentUser;
+      const kanaCompact = kanaData.filter(k => k.mistakeCount > 0 || k.corrects > 0).map(k => ({
+        question: k.question, mistakeCount: k.mistakeCount, corrects: k.corrects,
+        interval: k.interval, ease: k.ease, nextReview: k.nextReview
+      }));
+      const vocabCompact = vocabData.filter(k => k.mistakeCount > 0 || k.corrects > 0).map(k => ({
+        id: k.id, mistakeCount: k.mistakeCount, corrects: k.corrects,
+        interval: k.interval, ease: k.ease, nextReview: k.nextReview
+      }));
+      const kanjiCompact = kanjiData.filter(k => k.mistakeCount > 0 || k.corrects > 0).map(k => ({
+        id: k.id, mistakeCount: k.mistakeCount, corrects: k.corrects,
+        interval: k.interval, ease: k.ease, nextReview: k.nextReview
+      }));
+      fbDb.collection('users').doc(uid).set({
+        kanaData: kanaCompact, vocabData: vocabCompact, kanjiData: kanjiCompact,
+        settings: { isDark: settings.isDark, isSound: settings.isSound, lang: settings.lang },
+        taHighScore, svHighScore,
+        lastSync: Date.now()
+      }, { merge: true }).catch(e => console.log('Cloud save error:', e));
+    }, 2000);
+  }, [currentUser, isGuest, kanaData, vocabData, kanjiData, settings, taHighScore, svHighScore]);
+
+  React.useEffect(() => { if (cloudLoaded) saveToCloud(); }, [kanaData, vocabData, kanjiData, settings, taHighScore, svHighScore]);
 
   // FILL ALL STATE
   const [fillCheckMode, setFillCheckMode] = React.useState('instant');
@@ -866,6 +955,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     setTaScore(0); taScoreRef.current=0; setTaTimeLeft(60); setTaRunning(true); setTaFinished(false);
     setTaInputValue(''); taInputRef.current=''; setTaStatus('idle'); taStatusRef.current='idle';
     setTaCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('timeattack');
+    setTaPreStart(3); // Set pre-start countdown
   };
   const startFillAll = () => {
     if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
@@ -878,6 +968,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     setSvRunning(true); setSvFinished(false); setSvInputValue(''); svInputRef.current='';
     setSvStatus('idle'); svStatusRef.current='idle';
     setSvCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('survival');
+    setSvPreStart(3); // Set pre-start countdown
+    setSvTimeLeft(5); // Reset time for each question
   };
   const startMatchGame = () => {
     if(activeKanaList.length<2){alert("Hãy chọn ít nhất 2 mục để chơi Match!");return;}
@@ -915,9 +1007,30 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     return ()=>document.removeEventListener('keydown',handler,true);
   }, [appState,currentKana,kanaData,practiceMode,selectedAlphabet,selectedGroups,settings.isSound]);
 
+  // --- PRE-START COUNTDOWNS ---
+  React.useEffect(() => {
+    if (appState==='timeattack' && taRunning && taPreStart > 0) {
+      const t = setTimeout(() => setTaPreStart(p=>p-1), 1000);
+      return ()=>clearTimeout(t);
+    }
+    if (appState==='timeattack' && taRunning && taPreStart === 0 && !taFinished) {
+      setTimeout(focusMobileInput, 100); // Focus input after countdown
+    }
+  }, [appState, taRunning, taPreStart, taFinished]);
+
+  React.useEffect(() => {
+    if (appState==='survival' && svRunning && svPreStart > 0) {
+      const t = setTimeout(() => setSvPreStart(p=>p-1), 1000);
+      return ()=>clearTimeout(t);
+    }
+    if (appState==='survival' && svRunning && svPreStart === 0 && !svFinished) {
+      setTimeout(focusMobileInput, 100); // Focus input after countdown
+    }
+  }, [appState, svRunning, svPreStart, svFinished]);
+
   // --- TIME ATTACK TIMER ---
   React.useEffect(() => {
-    if(appState!=='timeattack'||!taRunning) return;
+    if(appState!=='timeattack'||!taRunning||taPreStart>0) return;
     if(taTimeLeft<=0){ setTaRunning(false); setTaFinished(true);
       const score = taScoreRef.current;
       if(score > taHighScore) { 
@@ -945,11 +1058,11 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     }
     const t = setTimeout(()=>setTaTimeLeft(p=>p-1),1000);
     return ()=>clearTimeout(t);
-  },[appState,taRunning,taTimeLeft]);
+  },[appState,taRunning,taTimeLeft,taPreStart]);
 
   // TIME ATTACK KEYDOWN
   React.useEffect(() => {
-    if(appState!=='timeattack'||!taRunning) return;
+    if(appState!=='timeattack'||!taRunning||taPreStart>0) return; // Added taPreStart check
     const handler = (e) => {
       if(taStatusRef.current!=='idle') return;
       const kana = activeKanaList[taCurrentIdx]; if(!kana) return;
@@ -981,11 +1094,50 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     };
     document.addEventListener('keydown',handler,true);
     return ()=>document.removeEventListener('keydown',handler,true);
-  },[appState,taRunning,activeKanaList,taCurrentIdx,settings.isSound]);
+  },[appState,taRunning,taPreStart,activeKanaList,taCurrentIdx,settings.isSound]);
+
+  // --- SURVIVAL QUESTION TIMER ---
+  React.useEffect(() => {
+    if(appState!=='survival'||!svRunning||svPreStart>0||svFinished||svStatusRef.current!=='idle') return;
+    if(svTimeLeft <= 0) {
+      // Timeout, deduct life
+      setSvStatus('error'); svStatusRef.current='error';
+      const kana = activeKanaList[svCurrentIdx];
+      if (kana) {
+        setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+        speakKana(kana.question,settings.isSound);
+      }
+      
+      const newLives = svLivesRef.current - 1;
+      setSvLives(newLives); svLivesRef.current = newLives;
+      
+      if(newLives <= 0) {
+        setTimeout(() => {
+          setSvRunning(false); setSvFinished(true);
+          const score = svStreakRef.current;
+          if (score > svHighScore) {
+             setSvHighScore(score);
+             localStorage.setItem(SURVIVAL_HIGHSCORE_KEY, score.toString());
+             setShowConfetti(true); setTimeout(()=>setShowConfetti(false),4000); 
+          }
+        }, 600);
+      } else {
+        setTimeout(()=>{
+          setSvStatus('idle');svStatusRef.current='idle';
+          setSvInputValue('');svInputRef.current='';
+          setSvCurrentIdx(genWeightedNext(activeKanaList,svCurrentIdx));
+          setSvTimeLeft(5);
+        }, 1000);
+      }
+      return;
+    }
+    const t = setTimeout(()=>setSvTimeLeft(p=>p-1),1000);
+    return ()=>clearTimeout(t);
+  }, [appState,svRunning,svPreStart,svTimeLeft,svFinished,activeKanaList,svCurrentIdx,settings.isSound]);
 
   // SURVIVAL KEYDOWN
   React.useEffect(() => {
-    if(appState!=='survival'||!svRunning) return;
+    if(appState!=='survival'||!svRunning||svPreStart>0) return; // Added svPreStart check
     const handler = (e) => {
       if(svStatusRef.current!=='idle') return;
       const kana = activeKanaList[svCurrentIdx]; if(!kana) return;
@@ -1010,7 +1162,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
               }
             }, 600);
           } else {
-            setTimeout(()=>{setSvStatus('idle');svStatusRef.current='idle';setSvInputValue('');svInputRef.current='';},500);
+            setTimeout(()=>{setSvStatus('idle');svStatusRef.current='idle';setSvInputValue('');svInputRef.current='';setSvTimeLeft(5);},500);
           }
         }
         return;
@@ -1028,13 +1180,14 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
             setSvInputValue('');svInputRef.current='';
             setSvCurrentIdx(genWeightedNext(activeKanaList,svCurrentIdx));
             setSvStatus('idle');svStatusRef.current='idle';
+            setSvTimeLeft(5);
           },200);
         }
       }
     };
     document.addEventListener('keydown',handler,true);
     return ()=>document.removeEventListener('keydown',handler,true);
-  },[appState,svRunning,activeKanaList,svCurrentIdx,settings.isSound,svHighScore]);
+  },[appState,svRunning,activeKanaList,svCurrentIdx,settings.isSound,svHighScore,svPreStart]);
 
   // HIDDEN INPUT FOR MOBILE KEYBOARD
   const mobileInputRef = React.useRef(null);
@@ -1133,7 +1286,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
   if(appState==='menu') {
     return (
       <div className="min-h-screen flex flex-col items-center px-4 py-16 sm:p-8">
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={isGuest ? 'Khách' : currentUser} onLogout={onLogout} onShowTutorial={onShowTutorial}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout} onShowTutorial={onShowTutorial}/>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-4 tracking-tight">{studyMode==='kana'?t.selectTitle:studyMode==='vocab'?t.vocabTitle:t.kanjiTitle}</h1>
         <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6">
           {[['kana','tabKana'],['vocab','tabVocab'],['kanji','tabKanji']].map(([m,k])=>(
@@ -1210,7 +1363,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={(e) => { if (!isDrawingMode && !showVirtualKb) focusMobileInput(e); }}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={isGuest ? 'Kh\u00e1ch' : currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-300 ease-out ${practiceMode==='practice_mistakes'?'bg-orange-400':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width:`${practiceMode==='practice_mistakes'?100:progressPercent}%`}}></div></div>
         <div className="absolute top-20 sm:top-24 w-full max-w-sm px-2 flex justify-between text-xs sm:text-sm font-semibold items-center z-20">
@@ -1308,7 +1461,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={()=>{setTaRunning(false);backToMenu();}} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         {showConfetti && Array.from({length:60}).map((_,i)=><div key={i} className="confetti-piece" style={{left:`${Math.random()*100}%`,background:`hsl(${Math.random()*360},80%,60%)`,borderRadius:Math.random()>0.5?'50%':'0',width:`${6+Math.random()*8}px`,height:`${6+Math.random()*8}px`,animationDelay:`${Math.random()*2}s`,animationDuration:`${2+Math.random()*2}s`}}/>)}
         <div className="absolute top-0 left-0 w-full h-2 bg-gray-100 dark:bg-gray-800 z-50"><div className={`h-full transition-all duration-1000 ease-linear ${isUrgent?'bg-red-500':'bg-gradient-to-r from-orange-400 to-red-500'}`} style={{width:`${timerPct}%`}}/></div>
@@ -1376,7 +1529,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={()=>{setSvRunning(false);backToMenu();}} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
         {showConfetti && Array.from({length:60}).map((_,i)=><div key={i} className="confetti-piece" style={{left:`${Math.random()*100}%`,background:`hsl(${Math.random()*360},80%,60%)`,borderRadius:Math.random()>0.5?'50%':'0',width:`${6+Math.random()*8}px`,height:`${6+Math.random()*8}px`,animationDelay:`${Math.random()*2}s`,animationDuration:`${2+Math.random()*2}s`}}/>)}
         
@@ -1393,13 +1546,23 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
               <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">{t.menu}</button>
             </div>
           </div>
+        ) : svPreStart > 0 ? (
+          <div className="flex flex-col items-center justify-center pt-20">
+            <div className="text-8xl font-black text-[#3182ce] pop-in animate-pulse">{svPreStart}</div>
+            <div className="text-xl font-bold text-gray-500 mt-4">Sẵn sàng!</div>
+          </div>
         ) : svKana ? (
           <div className="w-full max-w-[320px] flex flex-col items-center mt-16 sm:mt-12">
             <div className="flex items-center justify-between w-full mb-4 px-2">
-              <div className="flex gap-2 text-2xl">
+              <div className="flex gap-1 text-2xl">
                 {Array.from({length:3}).map((_,i) => (
-                   <span key={i} className={`transition-all ${i<svLives ? 'text-red-500 filter drop-shadow hover:scale-110' : 'text-gray-300 dark:text-gray-700 grayscale opacity-50'}`}>❤️</span>
+                   <span key={i} className={`transition-all ${i<svLives ? 'text-red-500 filter drop-shadow hover:scale-110' : 'text-gray-300 dark:text-gray-700 grayscale opacity-50'} ${svStatus==='error'&&i===svLives?'animate-ping':''}`}>❤️</span>
                 ))}
+              </div>
+              <div className="flex flex-col items-center flex-1 mx-4">
+                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full transition-all duration-1000 ease-linear ${svTimeLeft<=2?'bg-red-500':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width: `${(svTimeLeft/5)*100}%`}}></div>
+                </div>
               </div>
               <div className="text-4xl sm:text-5xl font-black text-[#3182ce] dark:text-blue-400 tabular-nums">{svStreak}</div>
             </div>
@@ -1430,7 +1593,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
     return (
       <div className="min-h-screen flex flex-col items-center px-3 sm:px-6 py-4 sm:py-8 relative" onClick={focusMobileInput}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} currentUser={currentUser} onLogout={onLogout}/>
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
 
         <h2 className="text-xl sm:text-2xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-12 sm:mt-4 mb-2">{t.fillTitle}</h2>
@@ -1509,91 +1672,150 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
   return null;
 }
 
-function LoginApp({ onLogin, onGuest }) {
-  const [mode, setMode] = React.useState('login'); 
+function LoginApp({ onLogin, onGuest, onNameUpdate }) {
+  const [mode, setMode] = React.useState('login');
+  const [loginId, setLoginId] = React.useState('');
+  const [email, setEmail] = React.useState('');
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [phone, setPhone] = React.useState('');
   const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
 
-  const handleSubmit = (e) => {
+  const resolveEmail = async (input) => {
+    if (input.includes('@')) return input;
+    const snap = await fbDb.collection('usernames').doc(input.toLowerCase()).get();
+    if (snap.exists) return snap.data().email;
+    return null;
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!username.trim() || !password || !phone) { setError('Vui lòng điền đủ thông tin'); return; }
-    
-    let users = [];
-    try { users = JSON.parse(localStorage.getItem('kana_users')) || []; } catch(e){}
-    
-    const userIdx = users.findIndex(u => u.username === username.trim());
-    
-    if (mode === 'login') {
-      if (userIdx >= 0) {
-        if (users[userIdx].password !== password) {
-          setError('Mật khẩu không đúng!');
-          return;
-        }
-        onLogin(username.trim());
+    if (!loginId.trim() || !password) { setError('Vui lòng điền đủ thông tin'); return; }
+    setLoading(true); setError('');
+    try {
+      const resolvedEmail = await resolveEmail(loginId.trim());
+      if (!resolvedEmail) { setError('Tên đăng nhập không tồn tại! Kiểm tra lại hoặc dùng email.'); setLoading(false); return; }
+      await fbAuth.signInWithEmailAndPassword(resolvedEmail, password);
+    } catch(err) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        setError('Tên/Email hoặc mật khẩu không đúng!');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Quá nhiều lần thử! Vui lòng đợi một lát.');
       } else {
-        users.push({ username: username.trim(), password, phone });
-        localStorage.setItem('kana_users', JSON.stringify(users));
-        onLogin(username.trim());
-      }
-    } else {
-      if (userIdx >= 0) {
-        if (users[userIdx].phone !== phone) {
-          setError('Số điện thoại không khớp với tài khoản này!');
-          return;
-        }
-        users[userIdx].password = password;
-        localStorage.setItem('kana_users', JSON.stringify(users));
-        onLogin(username.trim());
-      } else {
-        setError('Tài khoản không tồn tại!');
+        setError(err.message);
       }
     }
+    setLoading(false);
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    if (!username.trim() || !email.trim() || !password) { setError('Vui lòng điền đủ thông tin'); return; }
+    if (username.trim().length < 3) { setError('Tên đăng nhập phải có ít nhất 3 ký tự!'); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) { setError('Tên đăng nhập chỉ được chứa chữ, số và dấu _'); return; }
+    if (password.length < 6) { setError('Mật khẩu phải có ít nhất 6 ký tự!'); return; }
+    setLoading(true); setError('');
+    try {
+      const existing = await fbDb.collection('usernames').doc(username.trim().toLowerCase()).get();
+      if (existing.exists) { setError('Tên đăng nhập này đã có người dùng!'); setLoading(false); return; }
+      const cred = await fbAuth.createUserWithEmailAndPassword(email.trim(), password);
+      await fbDb.collection('usernames').doc(username.trim().toLowerCase()).set({ email: email.trim(), uid: cred.user.uid });
+      await cred.user.updateProfile({ displayName: username.trim() });
+      if (onNameUpdate) onNameUpdate(username.trim());
+    } catch(err) {
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email này đã được đăng ký! Hãy Đăng Nhập.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Email không hợp lệ!');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Mật khẩu quá yếu! Cần ít nhất 6 ký tự.');
+      } else {
+        setError(err.message);
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!loginId.trim()) { setError('Vui lòng nhập tên đăng nhập hoặc email!'); return; }
+    setLoading(true); setError('');
+    try {
+      const resolvedEmail = await resolveEmail(loginId.trim());
+      if (!resolvedEmail) { setError('Tên đăng nhập không tồn tại!'); setLoading(false); return; }
+      await fbAuth.sendPasswordResetEmail(resolvedEmail);
+      setError('✅ Đã gửi link đổi mật khẩu! Kiểm tra hộp thư email.');
+    } catch(err) {
+      setError(err.message);
+    }
+    setLoading(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-8 border border-gray-100 dark:border-gray-700 pop-in">
-        <h2 className="text-3xl font-extrabold text-center text-[#3182ce] dark:text-blue-400 mb-6">
-          {mode === 'login' ? 'Đăng Nhập / Đăng Ký' : 'Khôi Phục Mật Khẩu'}
+        <h2 className="text-3xl font-extrabold text-center text-[#3182ce] dark:text-blue-400 mb-2">
+          {mode === 'login' ? 'Đăng Nhập' : mode === 'signup' ? 'Đăng Ký' : 'Khôi Phục Mật Khẩu'}
         </h2>
+        <p className="text-center text-sm text-gray-400 dark:text-gray-500 mb-6">🔥 Đồng bộ tiến trình qua Firebase</p>
         
-        {error && <div className="mb-6 font-bold text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/40 py-3 rounded-xl border border-red-200 dark:border-red-800 animate-shake">{error}</div>}
+        {error && <div className={`mb-6 font-bold text-sm text-center py-3 rounded-xl border ${error.startsWith('✅') ? 'text-green-600 bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-800' : 'text-red-500 bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-800 animate-shake'}`}>{error}</div>}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Tên đăng nhập</label>
-            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="Nhập tên đăng nhập..." />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">{mode === 'login' ? 'Mật khẩu' : 'Mật khẩu mới'}</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder={mode === 'login' ? "Nhập mật khẩu..." : "Nhập mật khẩu mới..."} />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Số điện thoại {mode==='login' && <span className="text-xs text-blue-500 font-normal ml-1 border border-blue-200 bg-blue-50 px-1.5 py-0.5 rounded-md dark:bg-blue-900/30 dark:border-blue-800">Cần để xin lại pass</span>}</label>
-            <input type="tel" value={phone} onChange={e=>setPhone(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="Nhập số điện thoại..." />
-          </div>
+        <form onSubmit={mode === 'login' ? handleLogin : mode === 'signup' ? handleSignUp : handleResetPassword} className="space-y-4">
+          {mode === 'signup' ? (
+            <>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Tên đăng nhập</label>
+                <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="vd: trunk_kuc" autoComplete="username" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Email <span className="text-xs text-gray-400 font-normal">(để khôi phục mật khẩu)</span></label>
+                <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="you@example.com" autoComplete="email" />
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Tên đăng nhập hoặc Email</label>
+              <input type="text" value={loginId} onChange={e=>setLoginId(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="username hoặc you@example.com" autoComplete="username" />
+            </div>
+          )}
+          {mode !== 'reset' && (
+            <div>
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Mật khẩu</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl dark:bg-gray-700/50 dark:border-gray-600 dark:text-white outline-none focus:border-[#3182ce] transition-colors" placeholder="Ít nhất 6 ký tự" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+            </div>
+          )}
           
-          <button type="submit" className="w-full bg-[#3182ce] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all mt-4 shadow-lg shadow-blue-500/30">
-            {mode === 'login' ? 'Vào Học Ngay' : 'Xác Nhận & Đăng Nhập'}
+          <button type="submit" disabled={loading} className="w-full bg-[#3182ce] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all mt-4 shadow-lg shadow-blue-500/30 disabled:opacity-50">
+            {loading ? '⏳ Đang xử lý...' : mode === 'login' ? '🚀 Đăng Nhập' : mode === 'signup' ? '✨ Tạo Tài Khoản' : '📧 Gửi Link Khôi Phục'}
           </button>
         </form>
 
         {mode === 'login' && (
+          <button type="button" onClick={()=>{setMode('signup');setError('');}} className="w-full mt-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-3.5 rounded-xl font-bold text-base hover:from-emerald-600 hover:to-teal-600 active:scale-95 transition-all shadow-md">
+            📝 Tạo Tài Khoản Mới
+          </button>
+        )}
+        {mode === 'signup' && (
+          <button type="button" onClick={()=>{setMode('login');setError('');}} className="w-full mt-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3.5 rounded-xl font-bold text-base hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all border border-gray-200 dark:border-gray-600">
+            ← Đã có tài khoản? Đăng Nhập
+          </button>
+        )}
+
+        {(mode === 'login' || mode === 'signup') && (
           <button type="button" onClick={onGuest} className="w-full mt-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3.5 rounded-xl font-bold text-base hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition-all border border-gray-200 dark:border-gray-600">
-            👤 Vào với tư cách Khách
+            👤 Vào với tư cách Khách (không đồng bộ)
           </button>
         )}
         
         <div className="mt-6 text-center text-sm font-semibold">
           {mode === 'login' ? (
             <button type="button" onClick={()=>{setMode('reset');setError('');}} className="text-gray-500 hover:text-[#3182ce] dark:text-gray-400 dark:hover:text-blue-400 transition-colors">Quên mật khẩu?</button>
-          ) : (
+          ) : mode !== 'login' && (
             <button type="button" onClick={()=>{setMode('login');setError('');}} className="text-gray-500 hover:text-[#3182ce] dark:text-gray-400 dark:hover:text-blue-400 transition-colors">Quay lại đăng nhập</button>
           )}
         </div>
-        {mode === 'login' && <div className="mt-6 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">* Nếu tên đăng nhập lần đầu xuất hiện, hệ thống sẽ tự sinh tài khoản mới và lưu tự động vào máy của bạn. Mật khẩu mới chính là mật khẩu bạn vừa tạo.</div>}
+        {mode === 'login' && <div className="mt-6 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">🔄 Đăng nhập bằng Email + Mật khẩu. Tiến trình học sẽ được lưu trên Cloud và đồng bộ giữa các thiết bị.</div>}
       </div>
     </div>
   );
@@ -1658,43 +1880,75 @@ function TutorialPopup({ onClose, userKey }) {
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = React.useState(() => localStorage.getItem('kana_current_user') || null);
-  const [isGuest, setIsGuest] = React.useState(() => localStorage.getItem('kana_is_guest') === 'true');
+  const [currentUser, setCurrentUser] = React.useState(null);
+  const [isGuest, setIsGuest] = React.useState(false);
+  const [displayName, setDisplayName] = React.useState('');
   const [showTutorial, setShowTutorial] = React.useState(false);
+  const [authLoading, setAuthLoading] = React.useState(true);
 
-  const handleLogin = (username) => {
-    localStorage.setItem('kana_current_user', username);
-    localStorage.setItem('kana_is_guest', 'false');
-    setCurrentUser(username);
-    setIsGuest(false);
-    if (!localStorage.getItem(`kana_tutorial_hidden_${username}`)) {
-      setShowTutorial(true);
-    }
-  };
+  // Listen for Firebase auth changes
+  React.useEffect(() => {
+    const unsub = fbAuth.onAuthStateChanged(user => {
+      if (user) {
+        setCurrentUser(user.uid);
+        setDisplayName(user.displayName || user.email || user.uid);
+        setIsGuest(false);
+        localStorage.setItem('kana_current_user', user.uid);
+        localStorage.setItem('kana_is_guest', 'false');
+        if (!localStorage.getItem(`kana_tutorial_hidden_${user.uid}`)) {
+          setShowTutorial(true);
+        }
+      } else {
+        // Check if guest was previously set
+        const savedGuest = localStorage.getItem('kana_is_guest') === 'true';
+        if (savedGuest) {
+          setCurrentUser('__guest__');
+          setIsGuest(true);
+        } else {
+          setCurrentUser(null);
+          setIsGuest(false);
+        }
+      }
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
   const handleGuest = () => {
-    const guestName = '__guest__';
-    localStorage.setItem('kana_current_user', guestName);
+    localStorage.setItem('kana_current_user', '__guest__');
     localStorage.setItem('kana_is_guest', 'true');
-    setCurrentUser(guestName);
+    setCurrentUser('__guest__');
     setIsGuest(true);
-    if (!localStorage.getItem(`kana_tutorial_hidden_${guestName}`)) {
+    if (!localStorage.getItem('kana_tutorial_hidden___guest__')) {
       setShowTutorial(true);
     }
   };
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await fbAuth.signOut(); } catch(e){}
     localStorage.removeItem('kana_current_user');
     localStorage.removeItem('kana_is_guest');
     setCurrentUser(null);
     setIsGuest(false);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center pop-in">
+          <div className="text-5xl mb-4">🔄</div>
+          <div className="text-lg font-bold text-gray-500 dark:text-gray-400">Đang tải...</div>
+        </div>
+      </div>
+    );
+  }
   
   if (!currentUser) {
-    return <LoginApp onLogin={handleLogin} onGuest={handleGuest} />;
+    return <LoginApp onGuest={handleGuest} onNameUpdate={setDisplayName} />;
   }
   return (
     <>
       {showTutorial && <TutorialPopup onClose={() => setShowTutorial(false)} userKey={isGuest ? '__guest__' : currentUser} />}
-      <MainApp key={currentUser} currentUser={isGuest ? null : currentUser} isGuest={isGuest} onLogout={handleLogout} onShowTutorial={() => setShowTutorial(true)} />
+      <MainApp key={currentUser} currentUser={isGuest ? null : currentUser} isGuest={isGuest} onLogout={handleLogout} onShowTutorial={() => setShowTutorial(true)} displayName={isGuest ? 'Khách' : displayName} />
     </>
   );
 }
