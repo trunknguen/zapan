@@ -983,7 +983,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         if (d.kanaData) setKanaData(prev => mergeData(prev, d.kanaData, 'question'));
         if (d.vocabData) setVocabData(prev => mergeData(prev, d.vocabData, 'id'));
         if (d.kanjiData) setKanjiData(prev => mergeData(prev, d.kanjiData, 'id'));
-        if (d.settings) setSettings(prev => ({...prev, ...d.settings}));
+        if (d.settings) setSettings(prev => ({...prev, survivalTimer: prev.survivalTimer || 5, ...d.settings}));
         if (d.taHighScore) setTaHighScore(prev => Math.max(prev, d.taHighScore));
         if (d.svHighScore) setSvHighScore(prev => Math.max(prev, d.svHighScore));
       }
@@ -1122,14 +1122,21 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setShuffledFillList(shuffle(activeKanaList));
     setFillAnswers({}); setFillResults({}); setFocusedCardIdx(0); setFillFinished(false); setAppState('fill');
   };
-  const startSurvival = () => {
+  const startSurvival = (forceSettings = false) => {
     if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
+    if(!settings.survivalTimer) setSettings(p=>({...p, survivalTimer: 5}));
+    // If not started yet, show timer setup screen
     setSvLives(3); svLivesRef.current=3; setSvStreak(0); svStreakRef.current=0;
     setSvRunning(true); setSvFinished(false); setSvInputValue(''); svInputRef.current='';
     setSvStatus('idle'); svStatusRef.current='idle';
-    setSvCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('survival');
-    setSvPreStart(3); // Set pre-start countdown
-    setSvTimeLeft(5); // Reset time for each question
+    setSvCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false);
+    setAppState('survival');
+    if(forceSettings !== true) {
+       setSvPreStart('setup');
+    } else {
+       setSvPreStart(3);
+       setSvTimeLeft(settings.survivalTimer || 5);
+    }
   };
   const startMatchGame = () => {
     if(activeKanaList.length<2){alert("Hãy chọn ít nhất 2 mục để chơi Match!");return;}
@@ -1509,9 +1516,10 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
               Xem Thống Kê Điểm Yếu
            </button>
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 text-center">
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 text-center relative w-full">
           {t.srsHint}
           {taHighScore>0 && <span className="ml-2">&#8226; &#127942; {t.record}: {taHighScore}</span>}
+          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v6.1</span>
         </p>
       </div>
     );
@@ -1705,9 +1713,22 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
             <div className="text-sm text-gray-400 dark:text-gray-500">{t.record}: {svHighScore}</div>
             
             <div className="flex gap-4 mt-6">
-              <button onClick={startSurvival} className="bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">&#128260; {t.playAgain}</button>
+              <button onClick={()=>startSurvival(true)} className="bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">&#128260; {t.playAgain}</button>
               <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">{t.menu}</button>
             </div>
+          </div>
+        ) : svPreStart === 'setup' ? (
+          <div className="flex flex-col items-center bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl max-w-sm w-full border border-gray-100 dark:border-gray-700 pop-in z-20">
+             <div className="text-4xl mb-4">⚔️</div>
+             <h2 className="text-2xl font-black text-rose-500 mb-6 text-center">Chế Độ Sinh Tồn</h2>
+             <p className="text-sm text-gray-500 text-center mb-6">Chọn thời gian đếm ngược trả lời cho mỗi câu hỏi. Sai hoặc hết hạn sẽ bị trừ tim.</p>
+             <div className="grid grid-cols-2 gap-3 w-full mb-6">
+                <button onClick={() => setSettings(p=>({...p, survivalTimer: 5}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===5?'border-rose-500 bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>5 Giây</button>
+                <button onClick={() => setSettings(p=>({...p, survivalTimer: 10}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===10?'border-rose-500 bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>10 Giây</button>
+                <button onClick={() => setSettings(p=>({...p, survivalTimer: 15}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===15?'border-rose-500 bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>15 Giây</button>
+                <button onClick={() => setSettings(p=>({...p, survivalTimer: 0}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===0?'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>♾ Vô hạn</button>
+             </div>
+             <button onClick={()=>startSurvival(true)} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
           </div>
         ) : svPreStart > 0 ? (
           <div className="flex flex-col items-center justify-center pt-20">
@@ -1723,9 +1744,13 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 ))}
               </div>
               <div className="flex flex-col items-center flex-1 mx-4">
-                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full transition-all duration-1000 ease-linear ${svTimeLeft<=2?'bg-red-500':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width: `${(svTimeLeft/5)*100}%`}}></div>
-                </div>
+                {settings.survivalTimer > 0 ? (
+                  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className={`h-full transition-all duration-1000 ease-linear ${svTimeLeft<=2?'bg-red-500':'bg-[#3182ce] dark:bg-blue-500'}`} style={{width: `${(svTimeLeft/settings.survivalTimer)*100}%`}}></div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 dark:text-gray-600 font-bold uppercase tracking-wider">Thời gian vô hạn</div>
+                )}
               </div>
               <div className="text-4xl sm:text-5xl font-black text-[#3182ce] dark:text-blue-400 tabular-nums">{svStreak}</div>
             </div>
