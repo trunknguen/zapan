@@ -365,6 +365,12 @@ const SelectButton = ({children,isSelected,onClick,className=''}) => (
 
 const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,onLogout,onShowTutorial}) => (
   <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2 sm:gap-3 z-50 items-center">
+    {settings.dailyStreak > 0 && (
+      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-orange-200 dark:border-orange-800/50" title="Chuỗi ngày học liên tiếp">
+        <span className="text-sm sm:text-base animate-pulse shadow-orange-500/50">🔥</span>
+        <span className="text-sm sm:text-base font-black text-orange-500">{settings.dailyStreak}</span>
+      </div>
+    )}
     {displayName && (
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
         <span className="text-xs sm:text-sm font-bold text-[#3182ce] dark:text-blue-400">Chào {displayName}</span>
@@ -406,25 +412,29 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
      return all.sort((a,b) => b.mistakes - a.mistakes).slice(0, 10);
   }, [kanaData, vocabData, kanjiData]);
 
-  const summarizeKana = React.useMemo(() => {
-     let l = 0, r = 0, un = 0, total = 0;
-     for (const alpha in KANA_DEF) {
-       for (const cat in KANA_DEF[alpha]) {
-         for (const g of KANA_DEF[alpha][cat]) {
-           for (const i of g.items) {
-             total++;
-             const d = kanaData.find(k=>k.question===i.q);
-             if (d) {
-               if (d.mistakeCount > 0) r++;
-               else if (d.corrects > 0 && d.mistakeCount === 0) l++;
-               else un++;
-             } else un++;
-           }
-         }
-       }
+  const summarizeMastery = React.useMemo(() => {
+     let l_k = 0, r_k = 0, un_k = 0, t_k = 0;
+     for(const alpha in KANA_DEF) for(const cat in KANA_DEF[alpha]) for(const g of KANA_DEF[alpha][cat]) for(const i of g.items) {
+       t_k++; const d = kanaData.find(k=>k.question===i.q);
+       if(d){ if(d.mistakeCount>0)r_k++; else if(d.corrects>0 && d.mistakeCount===0)l_k++; else un_k++; } else un_k++;
      }
-     return { learned: l, review: r, unencountered: un, total, learnedPct: (l/total)*100, reviewPct: (r/total)*100 };
-  }, [kanaData]);
+     let l_v = 0, r_v = 0, un_v = 0, t_v = vocabData.length;
+     vocabData.forEach(v => { if(v.mistakeCount>0)r_v++; else if(v.corrects>0 && v.mistakeCount===0)l_v++; else un_v++; });
+     
+     let l_kj = 0, r_kj = 0, un_kj = 0, t_kj = kanjiData.length;
+     kanjiData.forEach(k => { if(k.mistakeCount>0)r_kj++; else if(k.corrects>0 && k.mistakeCount===0)l_kj++; else un_kj++; });
+
+     const totalL = l_k + l_v + l_kj;
+     const totalItems = t_k + t_v + t_kj;
+     const overAllPct = totalItems > 0 ? ((totalL / totalItems) * 100).toFixed(1) : 0;
+
+     return {
+       kana: { l:l_k, r:r_k, un:un_k, t:t_k, lp: t_k? (l_k/t_k)*100 : 0, rp: t_k? (r_k/t_k)*100 : 0 },
+       vocab: { l:l_v, r:r_v, un:un_v, t:t_v, lp: t_v? (l_v/t_v)*100 : 0, rp: t_v? (r_v/t_v)*100 : 0 },
+       kanji: { l:l_kj, r:r_kj, un:un_kj, t:t_kj, lp: t_kj? (l_kj/t_kj)*100 : 0, rp: t_kj? (r_kj/t_kj)*100 : 0 },
+       totalL, totalItems, overAllPct
+     };
+  }, [kanaData, vocabData, kanjiData]);
 
   React.useEffect(() => {
     if (!chartRef.current || topMistakes.length === 0) return;
@@ -481,20 +491,64 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
       
       <h2 className="text-2xl sm:text-3xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-16 sm:mt-6 mb-8 flex items-center gap-3">
          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-         Thống Kê Học Tập
+         Thống Kê & Cấp Độ
       </h2>
 
-      <div className="w-full max-w-4xl bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 pop-in mb-6">
-         <h3 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-200">Tiến độ Kana (Bảng chữ cái)</h3>
-         <div className="flex w-full h-5 rounded-full overflow-hidden mb-3 bg-gray-100 dark:bg-gray-700 shadow-inner">
-            <div className="bg-green-500 transition-all duration-1000" style={{width: `${summarizeKana.learnedPct}%`}}></div>
-            <div className="bg-red-500 transition-all duration-1000" style={{width: `${summarizeKana.reviewPct}%`}}></div>
+      {/* OVERALL MASTERY */}
+      <div className="w-full max-w-4xl bg-gradient-to-br from-indigo-500 to-purple-600 p-6 sm:p-8 rounded-3xl shadow-lg border border-indigo-400/50 pop-in mb-6 text-white relative overflow-hidden">
+         <div className="absolute -right-10 -top-10 opacity-10">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-64 h-64"><path fillRule="evenodd" d="M2.25 13.5a8.25 8.25 0 018.25-8.25.75.75 0 01.75.75v6.75H18a.75.75 0 01.75.75 8.25 8.25 0 01-16.5 0z" clipRule="evenodd" /><path fillRule="evenodd" d="M12.75 3a.75.75 0 01.75-.75 8.25 8.25 0 018.25 8.25.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75V3z" clipRule="evenodd" /></svg>
          </div>
-         <div className="flex justify-between items-center text-sm sm:text-base font-bold">
-            <span className="text-green-600 dark:text-green-400">Đã thuộc: {summarizeKana.learned}</span>
-            <span className="text-red-500 dark:text-red-400">Cần ôn: {summarizeKana.review}</span>
-            <span className="text-gray-400 dark:text-gray-500">Chưa học: {summarizeKana.unencountered}</span>
+         <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1 text-center md:text-left">
+               <h3 className="text-xl font-bold mb-2 text-indigo-100">Cấp Độ Thông Thạo Tối Đa (Mastery)</h3>
+               <p className="text-sm text-indigo-200 mb-6">Mở khóa cấp độ "Đã Thuộc" bằng cách gõ đúng thẻ liên tiếp nhiều lần mà không mắc lỗi.</p>
+               <div className="flex items-center gap-4 bg-black/20 p-4 rounded-2xl backdrop-blur-sm">
+                  <span className="text-4xl font-black">{summarizeMastery.overAllPct}%</span>
+                  <div className="flex-1">
+                     <div className="w-full h-3 bg-black/30 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-yellow-300 to-yellow-500 rounded-full transition-all duration-1000" style={{width: `${summarizeMastery.overAllPct}%`}}></div>
+                     </div>
+                     <p className="text-xs text-indigo-200 mt-2 font-bold text-right">Đã thuộc {summarizeMastery.totalL} / {summarizeMastery.totalItems} thẻ</p>
+                  </div>
+               </div>
+            </div>
+            <div className="flex flex-col gap-3 w-full md:w-64">
+               {[
+                 { label: 'Bảng Chữ', data: summarizeMastery.kana },
+                 { label: 'Từ Vựng (N5+N4)', data: summarizeMastery.vocab },
+                 { label: 'Kanji (N5+N4)', data: summarizeMastery.kanji }
+               ].map((item, idx) => (
+                 <div key={idx} className="bg-white/10 p-3 rounded-xl border border-white/20">
+                    <div className="flex justify-between text-xs font-bold mb-1.5"><span className="text-indigo-100">{item.label}</span><span>{item.data.lp.toFixed(0)}%</span></div>
+                    <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
+                       <div className="h-full bg-yellow-400 rounded-full" style={{width: `${item.data.lp}%`}}></div>
+                    </div>
+                 </div>
+               ))}
+            </div>
          </div>
+      </div>
+
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+         {[
+           { label: 'Tiến độ Bảng Chữ', data: summarizeMastery.kana },
+           { label: 'Tiến độ Từ Vựng', data: summarizeMastery.vocab },
+           { label: 'Tiến độ Kanji', data: summarizeMastery.kanji }
+         ].map((block, idx) => (
+           <div key={idx} className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 pop-in hover:scale-105 transition-transform cursor-default">
+              <h3 className="text-sm sm:text-base font-bold mb-4 text-gray-700 dark:text-gray-200 text-center">{block.label}</h3>
+              <div className="flex w-full h-3 rounded-full overflow-hidden mb-4 bg-gray-100 dark:bg-gray-700 shadow-inner">
+                 <div className="bg-green-500 transition-all duration-1000" style={{width: `${block.data.lp}%`}}></div>
+                 <div className="bg-red-500 transition-all duration-1000" style={{width: `${block.data.rp}%`}}></div>
+              </div>
+              <div className="flex justify-between items-center text-xs font-bold">
+                 <span className="text-green-600 dark:text-green-400">Đã thuộc: {block.data.l}</span>
+                 <span className="text-red-500 dark:text-red-400">Sai: {block.data.r}</span>
+                 <span className="text-gray-400 dark:text-gray-500">Chưa: {block.data.un}</span>
+              </div>
+           </div>
+         ))}
       </div>
       
       <div className="w-full max-w-4xl bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 pop-in">
@@ -853,10 +907,40 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
 
   const [settings, setSettings] = React.useState(() => {
     const s = localStorage.getItem(SETTINGS_KEY);
-    if(s) { const p=JSON.parse(s); if(!p.lang) p.lang='vi'; return p; }
-    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi' };
+    if(s) { 
+      const p=JSON.parse(s); 
+      if(!p.lang) p.lang='vi'; 
+      if(p.dailyStreak===undefined) p.dailyStreak = 0;
+      return p; 
+    }
+    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi', dailyStreak: 0, lastActiveDate: null };
   });
   const t = T[settings.lang] || T.vi;
+
+  // Streak logic effect
+  React.useEffect(() => {
+    setSettings(prev => {
+      const today = new Date().toDateString();
+      if(prev.lastActiveDate === today) return prev; // Already updated today
+
+      let currentStreak = prev.dailyStreak || 0;
+      if (prev.lastActiveDate) {
+         const lastDate = new Date(prev.lastActiveDate);
+         const currentDate = new Date(today);
+         const diffTime = Math.abs(currentDate - lastDate);
+         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+         if (diffDays === 1) {
+            currentStreak += 1; // Continued streak
+         } else if (diffDays > 1) {
+            currentStreak = 1; // Broken streak, reset to 1
+         }
+      } else {
+         currentStreak = 1; // First time playing
+      }
+      return { ...prev, dailyStreak: currentStreak, lastActiveDate: today };
+    });
+  }, []);
+
   React.useEffect(() => {
     settings.isDark ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -1519,7 +1603,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 text-center relative w-full">
           {t.srsHint}
           {taHighScore>0 && <span className="ml-2">&#8226; &#127942; {t.record}: {taHighScore}</span>}
-          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v6.1</span>
+          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v7.0</span>
         </p>
       </div>
     );
