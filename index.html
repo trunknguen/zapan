@@ -34,6 +34,8 @@
     .pop-in { animation: popIn 0.2s ease-out both; }
     @keyframes confettiFall { 0%{transform:translateY(-100vh) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
     .confetti-piece { position:fixed;width:10px;height:10px;top:-10px;z-index:9999;animation:confettiFall 3s ease-in forwards; }
+    @keyframes fireGlow { 0%,100%{box-shadow:0 0 4px #f59e0b,0 0 8px #ef4444;} 50%{box-shadow:0 0 8px #f59e0b,0 0 16px #ef4444,0 0 24px #dc2626;} }
+    .fire-glow { animation: fireGlow 1.5s ease-in-out infinite; }
   </style>
 </head>
 <body class="bg-[#fcfcfc] dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased transition-colors duration-300">
@@ -371,6 +373,20 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
         <span className="text-sm sm:text-base font-black text-orange-500">{settings.dailyStreak}</span>
       </div>
     )}
+    {(()=>{
+      const today = new Date().toISOString().slice(0,10);
+      const todayMin = (settings.studyMinutes||{})[today] || 0;
+      const todayCount = (settings.studyHistory||{})[today] || 0;
+      if(todayMin === 0 && todayCount === 0) return null;
+      return (
+        <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-red-200 dark:border-red-800/50" title={`Hôm nay: ${todayMin} phút, ${todayCount} câu đúng`}>
+          <span className="text-sm sm:text-base">⏱️</span>
+          <span className="text-sm sm:text-base font-black text-red-500">{todayMin}'</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">·</span>
+          <span className="text-xs font-bold text-emerald-500">{todayCount}✓</span>
+        </div>
+      );
+    })()}
     {displayName && (
       <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
         <span className="text-xs sm:text-sm font-bold text-[#3182ce] dark:text-blue-400">Chào {displayName}</span>
@@ -1042,10 +1058,38 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       if(p.dailyStreak===undefined) p.dailyStreak = 0;
       if(p.autoNextWriting===undefined) p.autoNextWriting = true;
       if(p.quizMode===undefined) p.quizMode = 'typing';
+      if(!p.studyHistory) p.studyHistory = {};
       return p; 
     }
-    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi', dailyStreak: 0, lastActiveDate: null, autoNextWriting: true, quizMode: 'typing' };
+    return { isDark: window.matchMedia('(prefers-color-scheme: dark)').matches, isSound: false, lang: 'vi', dailyStreak: 0, lastActiveDate: null, autoNextWriting: true, quizMode: 'typing', studyHistory: {} };
   });
+
+  const incrementStudyHistory = () => {
+    const today = new Date().toISOString().slice(0,10); // "2026-03-18"
+    setSettings(prev => {
+      const h = {...(prev.studyHistory||{})};
+      h[today] = (h[today]||0) + 1;
+      return {...prev, studyHistory: h};
+    });
+  };
+
+  // Track study time in minutes (every 60s while in a study mode)
+  const appStateRef = React.useRef(appState);
+  appStateRef.current = appState;
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const studyStates = ['quiz','timeattack','survival','fill','matchgame','writing','confusable'];
+      if(studyStates.includes(appStateRef.current)) {
+        const today = new Date().toISOString().slice(0,10);
+        setSettings(prev => {
+          const sm = {...(prev.studyMinutes||{})};
+          sm[today] = (sm[today]||0) + 1;
+          return {...prev, studyMinutes: sm};
+        });
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const t = T[settings.lang] || T.vi;
 
   // Streak logic effect
@@ -1122,6 +1166,33 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     else setKanaData(updater);
   };
 
+  // SMART REVIEW: find items that need reviewing
+  const getSmartReviewItems = () => {
+    const allItems = [...kanaData, ...vocabData, ...kanjiData];
+    return allItems.filter(item => item.mistakeCount > 0 || (item.corrects||0) < 3)
+      .sort((a,b) => (b.mistakeCount||0) - (a.mistakeCount||0))
+      .slice(0, 20);
+  };
+
+  // CONFUSABLE PAIRS DATA
+  const CONFUSABLE_PAIRS = [
+    { group: 'katakana', pairs: [{q:'シ',a:'shi'},{q:'ツ',a:'tsu'}] },
+    { group: 'katakana', pairs: [{q:'ソ',a:'so'},{q:'ン',a:'n'}] },
+    { group: 'katakana', pairs: [{q:'ア',a:'a'},{q:'ヤ',a:'ya'}] },
+    { group: 'katakana', pairs: [{q:'ウ',a:'u'},{q:'ワ',a:'wa'}] },
+    { group: 'katakana', pairs: [{q:'ク',a:'ku'},{q:'タ',a:'ta'}] },
+    { group: 'katakana', pairs: [{q:'コ',a:'ko'},{q:'ヨ',a:'yo'}] },
+    { group: 'katakana', pairs: [{q:'ヌ',a:'nu'},{q:'フ',a:'fu'}] },
+    { group: 'katakana', pairs: [{q:'チ',a:'chi'},{q:'テ',a:'te'}] },
+    { group: 'hiragana', pairs: [{q:'は',a:'ha'},{q:'ほ',a:'ho'}] },
+    { group: 'hiragana', pairs: [{q:'わ',a:'wa'},{q:'れ',a:'re'},{q:'ね',a:'ne'}] },
+    { group: 'hiragana', pairs: [{q:'め',a:'me'},{q:'ぬ',a:'nu'}] },
+    { group: 'hiragana', pairs: [{q:'る',a:'ru'},{q:'ろ',a:'ro'}] },
+    { group: 'hiragana', pairs: [{q:'き',a:'ki'},{q:'さ',a:'sa'}] },
+    { group: 'hiragana', pairs: [{q:'い',a:'i'},{q:'り',a:'ri'}] },
+    { group: 'hiragana', pairs: [{q:'あ',a:'a'},{q:'お',a:'o'}] },
+  ];
+
   // RANDOM QUIZ STATE
   const [practiceMode, setPracticeMode] = React.useState('normal');
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -1138,6 +1209,15 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const inputRef = React.useRef('');
   const statusRef = React.useRef('idle');
   const currentKanaRef = React.useRef(null);
+
+  // CONFUSABLE PAIRS STATE
+  const [cfPairIdx, setCfPairIdx] = React.useState(0);
+  const [cfTargetIdx, setCfTargetIdx] = React.useState(0);
+  const [cfOptions, setCfOptions] = React.useState([]);
+  const [cfStatus, setCfStatus] = React.useState('idle'); // idle|correct|error
+  const [cfScore, setCfScore] = React.useState(0);
+  const [cfTotal, setCfTotal] = React.useState(0);
+  const [smartReviewPool, setSmartReviewPool] = React.useState(null); // null = not in smart review mode
 
   // TIME ATTACK STATE
   const [taScore, setTaScore] = React.useState(0);
@@ -1372,14 +1452,31 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setAppState('matchgame');
   };
 
+  const startSmartReview = () => {
+    const items = getSmartReviewItems();
+    if(items.length === 0){ alert('✅ Tuyệt vời! Không có từ nào cần ôn lúc này.'); return; }
+    setSmartReviewPool(items);
+    setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle'); setDrawingChecked(false);
+    const nextIdx = Math.floor(Math.random()*items.length);
+    setCurrentIndex(nextIdx); setAppState('quiz');
+    if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(items[nextIdx] || items[0], items));
+  };
+
+  const startConfusable = () => {
+    setCfScore(0); setCfTotal(0); setCfStatus('idle');
+    const shuffledPairs = shuffle([...CONFUSABLE_PAIRS]);
+    const pair = shuffledPairs[0];
+    const targetI = Math.floor(Math.random()*pair.pairs.length);
+    setCfPairIdx(0); setCfTargetIdx(targetI); setCfOptions(shuffle([...pair.pairs]));
+    setAppState('confusable');
+  };
+
   const handleCorrectRandom = () => {
-    setStatus('correct'); setCorrectCount(p=>p+1);
-    let pool=activeQuizData;
+    setStatus('correct'); setCorrectCount(p=>p+1); incrementStudyHistory();
+    const pool = smartReviewPool || activeQuizData;
     if(currentKana){ 
       const nd=(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true):k);
       setActiveData(()=>nd);
-      if(studyMode==='kana'){ const nl=nd.filter(k=>k.alphabet===selectedAlphabet&&selectedGroups[selectedAlphabet].includes(k.groupId)); pool=practiceMode==='practice_mistakes'?nl.filter(k=>k.mistakeCount>0):nl; }
-      else pool=nd;
     }
     setTimeout(()=>{ 
       setInputValue(''); setDrawingChecked(false); clearCanvas(); 
@@ -1698,7 +1795,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setFillResults(results); setFillFinished(true);
   };
 
-  const backToMenu = () => { setAppState('menu'); if('speechSynthesis' in window) window.speechSynthesis.cancel(); };
+  const backToMenu = () => { setAppState('menu'); setSmartReviewPool(null); if('speechSynthesis' in window) window.speechSynthesis.cancel(); };
 
   // ===================== RENDER =====================
 
@@ -1763,16 +1860,105 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
               &#127918; Match Game
            </button>
         </div>
+        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-2 gap-3">
+           <button onClick={startSmartReview} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-amber-600 hover:to-yellow-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2 relative">
+              📋 Ôn Tập
+              {(()=>{ const c = getSmartReviewItems().length; return c > 0 ? <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">{c > 9 ? '9+' : c}</span> : null; })()}
+           </button>
+           <button onClick={startConfusable} className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-pink-600 hover:to-fuchsia-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
+              🔀 Cặp Dễ Nhầm
+           </button>
+        </div>
         <div className="w-full max-w-xl px-2 mt-3 mb-4">
            <button onClick={()=>setAppState('stats')} className="w-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-3.5 font-bold text-base shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
               Xem Thống Kê Điểm Yếu
            </button>
         </div>
+
+        {/* === STUDY HEATMAP (FIRE THEME) === */}
+        {(()=>{
+          const hist = settings.studyHistory || {};
+          const mins = settings.studyMinutes || {};
+          const today = new Date();
+          const days = [];
+          for(let i=89; i>=0; i--) {
+            const d = new Date(today); d.setDate(d.getDate()-i);
+            const key = d.toISOString().slice(0,10);
+            days.push({ date: d, key, count: hist[key]||0, minutes: mins[key]||0 });
+          }
+          const getFireColor = (minutes, isDark) => {
+            if(minutes===0) return isDark ? '#1e293b' : '#e2e8f0';
+            if(minutes<5)  return isDark ? '#7f1d1d' : '#fecaca';  // Level 1: đỏ nhạt
+            if(minutes<15) return isDark ? '#b91c1c' : '#f87171';  // Level 2
+            if(minutes<30) return isDark ? '#dc2626' : '#ef4444';  // Level 3
+            if(minutes<45) return isDark ? '#ea580c' : '#f97316';  // Level 4
+            if(minutes<60) return isDark ? '#d97706' : '#f59e0b';  // Level 5
+            return isDark ? '#fbbf24' : '#f59e0b';                 // Level 6: 60+ đặc biệt
+          };
+          const getFireEmoji = (minutes) => {
+            if(minutes===0) return '';
+            if(minutes<5)  return '';
+            if(minutes<15) return '';
+            if(minutes<30) return '';
+            if(minutes<45) return '';
+            if(minutes<60) return '';
+            return '🔥'; // 60+ special
+          };
+          const wLabels = ['T2','T3','T4','T5','T6','T7','CN'];
+          const firstDow = (days[0].date.getDay()+6)%7;
+          const padded = Array(firstDow).fill(null).concat(days);
+          const weeks = [];
+          for(let i=0; i<padded.length; i+=7) weeks.push(padded.slice(i,i+7));
+          const totalMinutes = Object.values(mins).reduce((a,b)=>a+b,0);
+          const totalAnswers = Object.values(hist).reduce((a,b)=>a+b,0);
+          const activeDays = Object.keys(mins).filter(k=>mins[k]>0).length || Object.keys(hist).filter(k=>hist[k]>0).length;
+          const legendLevels = [0, 3, 10, 20, 35, 50, 65]; // representative minute values
+          return (
+            <div className="w-full max-w-xl px-2 mt-6 mb-2">
+              <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">🔥 Lịch Học Tập</h3>
+                  <div className="flex gap-3 text-xs text-gray-400 dark:text-gray-500">
+                    <span><strong className="text-orange-500">{activeDays}</strong> ngày</span>
+                    <span><strong className="text-red-500">{totalMinutes}</strong> phút</span>
+                    <span><strong className="text-emerald-500">{totalAnswers}</strong> câu</span>
+                  </div>
+                </div>
+                <div className="flex gap-0.5">
+                  <div className="flex flex-col gap-0.5 mr-1 pt-0">
+                    {wLabels.map((l,i) => <div key={i} className="h-[14px] sm:h-[16px] flex items-center text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-600 font-medium leading-none">{i%2===0?l:''}</div>)}
+                  </div>
+                  <div className="flex gap-0.5 flex-1 overflow-hidden">
+                    {weeks.map((week, wi) => (
+                      <div key={wi} className="flex flex-col gap-0.5 flex-1">
+                        {Array(7).fill(null).map((_, di) => {
+                          const cell = week[di];
+                          if(!cell) return <div key={di} className="aspect-square rounded-[3px] sm:rounded-[4px]"></div>;
+                          const isToday = cell.key === today.toISOString().slice(0,10);
+                          const is60Plus = cell.minutes >= 60;
+                          return <div key={di} title={`${cell.key}: ${cell.minutes} phút, ${cell.count} câu`} className={`aspect-square rounded-[3px] sm:rounded-[4px] transition-colors flex items-center justify-center ${isToday?'ring-1 ring-orange-400 ring-offset-1 dark:ring-offset-gray-800':''} ${is60Plus?'fire-glow':''}`} style={{backgroundColor: getFireColor(cell.minutes, settings.isDark)}}>
+                            {is60Plus && <span className="text-[6px] sm:text-[8px] leading-none">🔥</span>}
+                          </div>;
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-1 mt-2">
+                  <span className="text-[9px] text-gray-400 dark:text-gray-500 mr-1">0'</span>
+                  {legendLevels.map((m,i)=>(<div key={i} className={`w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] rounded-[2px] ${m>=60?'fire-glow':''}`} style={{backgroundColor: getFireColor(m, settings.isDark)}}></div>))}
+                  <span className="text-[9px] text-gray-400 dark:text-gray-500 ml-1">60'+🔥</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 text-center relative w-full">
           {t.srsHint}
           {taHighScore>0 && <span className="ml-2">&#8226; &#127942; {t.record}: {taHighScore}</span>}
-          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v7.0</span>
+          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v7.3</span>
         </p>
       </div>
     );
@@ -2157,6 +2343,71 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
       }} 
     />;
+  }
+
+  // --- CONFUSABLE PAIRS RENDER ---
+  if(appState==='confusable') {
+    const shuffledPairs = shuffle([...CONFUSABLE_PAIRS]);
+    const pair = shuffledPairs[cfPairIdx % shuffledPairs.length];
+    const target = pair ? pair.pairs[cfTargetIdx % pair.pairs.length] : null;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative">
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
+        <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
+        
+        <div className="w-full max-w-sm flex flex-col items-center">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="text-center">
+              <span className="text-3xl sm:text-4xl font-black text-emerald-500">{cfScore}</span>
+              <p className="text-xs text-gray-400 font-bold">đúng</p>
+            </div>
+            <div className="text-xl text-gray-300 dark:text-gray-600 font-bold">/</div>
+            <div className="text-center">
+              <span className="text-3xl sm:text-4xl font-black text-gray-400 dark:text-gray-500">{cfTotal}</span>
+              <p className="text-xs text-gray-400 font-bold">tổng</p>
+            </div>
+          </div>
+
+          <div className="text-sm text-gray-400 dark:text-gray-500 font-bold mb-2 uppercase tracking-wider">Chữ nào là:</div>
+          <div className="bg-gradient-to-br from-pink-500 to-fuchsia-600 text-white rounded-3xl px-12 py-6 mb-8 shadow-xl">
+            <span className="text-4xl sm:text-5xl font-black tracking-wider">{target ? target.a : ''}</span>
+          </div>
+          <div className="text-sm text-gray-400 dark:text-gray-500 mb-4">Chọn đáp án đúng ({pair ? pair.group : ''}):</div>
+
+          <div className="flex flex-col gap-3 w-full">
+            {cfOptions.map((opt, i) => {
+              let btnClass = "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-2 border-gray-100 dark:border-gray-700 hover:border-fuchsia-400 hover:text-fuchsia-600";
+              if(cfStatus !== 'idle') {
+                if(opt.q === target.q) btnClass = "bg-emerald-500 text-white border-2 border-emerald-600 scale-105";
+                else if(cfStatus === 'error') btnClass = "bg-gray-100 dark:bg-gray-800 text-gray-400 border-2 border-gray-200 dark:border-gray-700 opacity-60";
+              }
+              return (
+                <button key={i} disabled={cfStatus !== 'idle'} onClick={() => {
+                  setCfTotal(p=>p+1);
+                  if(opt.q === target.q) {
+                    setCfStatus('correct'); setCfScore(p=>p+1); incrementStudyHistory();
+                    setTimeout(() => {
+                      const newShuffled = shuffle([...CONFUSABLE_PAIRS]);
+                      const nextPair = newShuffled[0];
+                      const nextTarget = Math.floor(Math.random()*nextPair.pairs.length);
+                      setCfPairIdx(p=>p+1); setCfTargetIdx(nextTarget); setCfOptions(shuffle([...nextPair.pairs])); setCfStatus('idle');
+                    }, 600);
+                  } else {
+                    setCfStatus('error');
+                    setTimeout(() => {
+                      setCfStatus('idle');
+                    }, 1200);
+                  }
+                }} className={`w-full py-4 px-6 rounded-2xl shadow-sm text-center font-bold text-2xl sm:text-3xl kana-text active:scale-95 transition-all ${btnClass}`}>
+                  {opt.q}
+                  {cfStatus !== 'idle' && <span className="text-sm font-medium ml-2 opacity-70">({opt.a})</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return null;
