@@ -1,3 +1,6 @@
+văn của con AI viết trông giả gớm mà thôi đại đại đi ^^
+linh qép để học : https://trunknguen.github.io/zapan/
+
 <div align="center">
   <img src="./gd6/icon.png" alt="Za Pan Logo" width="120" />
   
