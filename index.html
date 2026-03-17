@@ -198,7 +198,7 @@ const ALL_KANJI = { ...KANJI_N5, ...KANJI_N4 };
 
 const VOCAB_CATS = Object.keys(ALL_VOCAB);
 const KANJI_CATS = Object.keys(ALL_KANJI);
-const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0 };
+const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0, corrects: 0 };
 const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const defaultVocabData = genVocabList();
@@ -220,8 +220,8 @@ const defaultKanaData = generateKanaList();
 // SRS Engine (SM-2 inspired)
 const srsUpdate = (card, isCorrect) => {
   const now = Date.now();
-  let { interval, ease, nextReview } = card;
-  interval = interval || 0; ease = ease || 2.5; nextReview = nextReview || 0;
+  let { interval, ease, nextReview, corrects } = card;
+  interval = interval || 0; ease = ease || 2.5; nextReview = nextReview || 0; corrects = corrects || 0;
   if (isCorrect) {
     if (interval === 0) interval = 1;        // 1 minute
     else if (interval === 1) interval = 10;  // 10 minutes
@@ -229,11 +229,12 @@ const srsUpdate = (card, isCorrect) => {
     else if (interval < 1440) interval = 1440; // 1 day
     else interval = Math.round(interval * Math.min(ease, 4));
     ease = Math.max(1.3, ease + 0.1);
+    corrects += 1;
   } else {
     interval = 1; // reset to 1 minute
     ease = Math.max(1.3, ease - 0.2);
   }
-  return { ...card, interval, ease, nextReview: now + interval * 60000 };
+  return { ...card, interval, ease, nextReview: now + interval * 60000, corrects };
 };
 const isDue = (card) => !card.nextReview || Date.now() >= card.nextReview;
 
@@ -372,14 +373,14 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
   
   const topMistakes = React.useMemo(() => {
      let all = [];
-     for (const q in kanaData) {
-        if (kanaData[q].mistakes > 0) all.push({ q, mistakes: kanaData[q].mistakes, label: 'Kana' });
-     }
+     kanaData.forEach(k => {
+        if (k.mistakeCount > 0) all.push({ q: k.question, mistakes: k.mistakeCount, label: 'Kana' });
+     });
      vocabData.forEach(v => {
-        if (v.mistakeCount > 0) all.push({ q: v.title, mistakes: v.mistakeCount, label: 'Vocab' });
+        if (v.mistakeCount > 0) all.push({ q: v.question||v.title, mistakes: v.mistakeCount, label: 'Vocab' });
      });
      kanjiData.forEach(k => {
-        if (k.mistakeCount > 0) all.push({ q: k.kanji, mistakes: k.mistakeCount, label: 'Kanji' });
+        if (k.mistakeCount > 0) all.push({ q: k.question||k.kanji, mistakes: k.mistakeCount, label: 'Kanji' });
      });
      return all.sort((a,b) => b.mistakes - a.mistakes).slice(0, 10);
   }, [kanaData, vocabData, kanjiData]);
@@ -391,10 +392,10 @@ function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
          for (const g of KANA_DEF[alpha][cat]) {
            for (const i of g.items) {
              total++;
-             const d = kanaData[i.q];
+             const d = kanaData.find(k=>k.question===i.q);
              if (d) {
-               if (d.mistakes > 0) r++;
-               else if (d.corrects > 0 && d.mistakes === 0) l++;
+               if (d.mistakeCount > 0) r++;
+               else if (d.corrects > 0 && d.mistakeCount === 0) l++;
                else un++;
              } else un++;
            }
@@ -685,21 +686,21 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial }) {
 
   const [kanaData, setKanaData] = React.useState(() => {
     const sd = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('kana_weakness_data');
-    if(sd) { try { const p=JSON.parse(sd); return defaultKanaData.map(d=>{const m=p.find(k=>k.question===d.question); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    if(sd) { try { const p=JSON.parse(sd); return defaultKanaData.map(d=>{const m=p.find(k=>k.question===d.question); return m?{...d,mistakeCount:m.mistakeCount||0,corrects:m.corrects||0}:d;}); } catch(e){} }
     return defaultKanaData;
   });
   React.useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(kanaData)); }, [kanaData]);
 
   const [vocabData, setVocabData] = React.useState(() => {
     const sd = localStorage.getItem(VOCAB_KEY);
-    if(sd) { try { const p=JSON.parse(sd); return defaultVocabData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    if(sd) { try { const p=JSON.parse(sd); return defaultVocabData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount||0,corrects:m.corrects||0}:d;}); } catch(e){} }
     return defaultVocabData;
   });
   React.useEffect(() => { localStorage.setItem(VOCAB_KEY, JSON.stringify(vocabData)); }, [vocabData]);
 
   const [kanjiData, setKanjiData] = React.useState(() => {
     const sd = localStorage.getItem(KANJI_KEY);
-    if(sd) { try { const p=JSON.parse(sd); return defaultKanjiData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount}:d;}); } catch(e){} }
+    if(sd) { try { const p=JSON.parse(sd); return defaultKanjiData.map(d=>{const m=p.find(k=>k.id===d.id); return m?{...d,mistakeCount:m.mistakeCount||0,corrects:m.corrects||0}:d;}); } catch(e){} }
     return defaultKanjiData;
   });
   React.useEffect(() => { localStorage.setItem(KANJI_KEY, JSON.stringify(kanjiData)); }, [kanjiData]);
