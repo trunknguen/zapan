@@ -36,6 +36,18 @@
     .confetti-piece { position:fixed;width:10px;height:10px;top:-10px;z-index:9999;animation:confettiFall 3s ease-in forwards; }
     @keyframes fireGlow { 0%,100%{box-shadow:0 0 4px #f59e0b,0 0 8px #ef4444;} 50%{box-shadow:0 0 8px #f59e0b,0 0 16px #ef4444,0 0 24px #dc2626;} }
     .fire-glow { animation: fireGlow 1.5s ease-in-out infinite; }
+    @keyframes slideIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
+    @keyframes slideOut { from{transform:translateX(0)} to{transform:translateX(-100%)} }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes fadeOut { from{opacity:1} to{opacity:0} }
+    @keyframes drawStroke {
+      0% { stroke-dashoffset: 1000; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-slide-out { animation: slideOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .animate-fade-out { animation: fadeOut 0.3s ease-out forwards; }
   </style>
 </head>
 <body class="bg-[#fcfcfc] dark:bg-gray-900 text-gray-800 dark:text-gray-100 antialiased transition-colors duration-300">
@@ -166,33 +178,56 @@ const VOCAB_N5 = {
 };
 const KANJI_N5 = {
   numbers_k:{id:'numbers_k',label:'Số',items:[
-    {q:'一',a:['ichi','hitotsu'],m:{vi:'Một',en:'One'}},{q:'二',a:['ni','futatsu'],m:{vi:'Hai',en:'Two'}},
-    {q:'三',a:['san','mittsu'],m:{vi:'Ba',en:'Three'}},{q:'四',a:['shi','yon'],m:{vi:'Bốn',en:'Four'}},
-    {q:'五',a:['go','itsutsu'],m:{vi:'Năm',en:'Five'}},{q:'六',a:['roku','muttsu'],m:{vi:'Sáu',en:'Six'}},
-    {q:'七',a:['shichi','nana'],m:{vi:'Bảy',en:'Seven'}},{q:'八',a:['hachi','yattsu'],m:{vi:'Tám',en:'Eight'}},
-    {q:'九',a:['ku','kyuu'],m:{vi:'Chín',en:'Nine'}},{q:'十',a:['juu'],m:{vi:'Mười',en:'Ten'}},
-    {q:'百',a:['hyaku'],m:{vi:'Trăm',en:'Hundred'}},{q:'千',a:['sen'],m:{vi:'Nghìn',en:'Thousand'}}]},
+    {q:'一',a:['ichi','hitotsu'],m:{vi:'Một',en:'One'},hv:'Nhất',hint:'Một nét ngang = số 1'},
+    {q:'二',a:['ni','futatsu'],m:{vi:'Hai',en:'Two'},hv:'Nhị',hint:'Hai nét ngang = số 2'},
+    {q:'三',a:['san','mittsu'],m:{vi:'Ba',en:'Three'},hv:'Tam',hint:'Ba nét ngang = số 3'},
+    {q:'四',a:['shi','yon'],m:{vi:'Bốn',en:'Four'},hv:'Tứ',hint:'Ô vuông (囗) bên trong có chia đôi (八) giống 4 phần'},
+    {q:'五',a:['go','itsutsu'],m:{vi:'Năm',en:'Five'},hv:'Ngũ',hint:'Chữ có 4 nét ngang-dọc xen kẽ giống bàn tay 5 ngón'},
+    {q:'六',a:['roku','muttsu'],m:{vi:'Sáu',en:'Six'},hv:'Lục',hint:'Mái nhà (亠) có 2 chân (八) = 6 mặt khối lập phương'},
+    {q:'七',a:['shichi','nana'],m:{vi:'Bảy',en:'Seven'},hv:'Thất',hint:'Nét cắt ngang giống số 7 lộn ngược'},
+    {q:'八',a:['hachi','yattsu'],m:{vi:'Tám',en:'Eight'},hv:'Bát',hint:'Hai nét tách ra 2 bên giống số 8 bổ đôi'},
+    {q:'九',a:['ku','kyuu'],m:{vi:'Chín',en:'Nine'},hv:'Cửu',hint:'Giống chữ "力" (lực) thiếu 1 nét = chín muồi'},
+    {q:'十',a:['juu'],m:{vi:'Mười',en:'Ten'},hv:'Thập',hint:'Dấu cộng (+) = 10 = tròn đủ'},
+    {q:'百',a:['hyaku'],m:{vi:'Trăm',en:'Hundred'},hv:'Bách',hint:'Một (一) ở trên trắng (白) = 100 phần trắng tinh'},
+    {q:'千',a:['sen'],m:{vi:'Nghìn',en:'Thousand'},hv:'Thiên',hint:'Nét phẩy trên chữ Mười (十) = gấp trăm lần'}]},
   days:{id:'days',label:'Ngày tháng',items:[
-    {q:'日',a:['nichi','hi','jitsu'],m:{vi:'Ngày',en:'Day'}},{q:'月',a:['getsu','gatsu','tsuki'],m:{vi:'Tháng',en:'Month'}},
-    {q:'火',a:['ka','hi'],m:{vi:'Lửa',en:'Fire'}},{q:'水',a:['sui','mizu'],m:{vi:'Nước',en:'Water'}},
-    {q:'木',a:['moku','ki'],m:{vi:'Cây',en:'Tree'}},{q:'金',a:['kin','kane'],m:{vi:'Vàng',en:'Gold'}},
-    {q:'土',a:['do','tsuchi'],m:{vi:'Đất',en:'Earth'}},{q:'年',a:['nen','toshi'],m:{vi:'Năm',en:'Year'}}]},
+    {q:'日',a:['nichi','hi','jitsu'],m:{vi:'Ngày',en:'Day'},hv:'Nhật',hint:'Mặt trời hình chữ nhật (ロ), bị chia đôi (一)'},
+    {q:'月',a:['getsu','gatsu','tsuki'],m:{vi:'Tháng',en:'Month'},hv:'Nguyệt',hint:'Mặt trăng lưỡi liềm, bên trong có 2 nét giống vân trăng'},
+    {q:'火',a:['ka','hi'],m:{vi:'Lửa',en:'Fire'},hv:'Hỏa',hint:'Người (人) đang giơ 2 tay lên vì bị lửa đốt'},
+    {q:'水',a:['sui','mizu'],m:{vi:'Nước',en:'Water'},hv:'Thủy',hint:'Dòng nước chảy xuống, tung tóe 2 bên'},
+    {q:'木',a:['moku','ki'],m:{vi:'Cây',en:'Tree'},hv:'Mộc',hint:'Thân cây dọc (十) có 2 cành tỏa ra'},
+    {q:'金',a:['kin','kane'],m:{vi:'Vàng',en:'Gold'},hv:'Kim',hint:'Mái nhà (人) che kho vàng, dưới có 2 cục vàng'},
+    {q:'土',a:['do','tsuchi'],m:{vi:'Đất',en:'Earth'},hv:'Thổ',hint:'Cây thánh giá (+) cắm xuống mặt đất (一)'},
+    {q:'年',a:['nen','toshi'],m:{vi:'Năm',en:'Year'},hv:'Niên',hint:'Người nông dân (人) gánh lúa qua mùa, hết 1 năm'}]},
   people:{id:'people',label:'Người',items:[
-    {q:'人',a:['jin','nin','hito'],m:{vi:'Người',en:'Person'}},{q:'男',a:['otoko','dan'],m:{vi:'Nam',en:'Man'}},
-    {q:'女',a:['onna','jo'],m:{vi:'Nữ',en:'Woman'}},{q:'子',a:['ko','shi'],m:{vi:'Con',en:'Child'}},
-    {q:'学',a:['gaku','mana'],m:{vi:'Học',en:'Study'}},{q:'生',a:['sei','shou'],m:{vi:'Sinh',en:'Life'}},
-    {q:'先',a:['sen','saki'],m:{vi:'Trước',en:'Previous'}},{q:'友',a:['yuu','tomo'],m:{vi:'Bạn',en:'Friend'}},
-    {q:'父',a:['chichi','fu'],m:{vi:'Cha',en:'Father'}},{q:'母',a:['haha','bo'],m:{vi:'Mẹ',en:'Mother'}}]},
+    {q:'人',a:['jin','nin','hito'],m:{vi:'Người',en:'Person'},hv:'Nhân',hint:'Hai nét tựa vào nhau như 2 người đỡ nhau'},
+    {q:'男',a:['otoko','dan'],m:{vi:'Nam',en:'Man'},hv:'Nam',hint:'Ruộng (田) + Sức (力) = đàn ông cày ruộng'},
+    {q:'女',a:['onna','jo'],m:{vi:'Nữ',en:'Woman'},hv:'Nữ',hint:'Hình người phụ nữ đang quỳ, 2 tay khoanh'},
+    {q:'子',a:['ko','shi'],m:{vi:'Con',en:'Child'},hv:'Tử',hint:'Em bé nằm trong nôi, 2 tay đang vẫy'},
+    {q:'学',a:['gaku','mana'],m:{vi:'Học',en:'Study'},hv:'Học',hint:'Con (子) ngồi dưới mái nhà đọc sách'},
+    {q:'生',a:['sei','shou'],m:{vi:'Sinh',en:'Life'},hv:'Sinh',hint:'Cây non (牛) mọc lên từ mặt đất (一)'},
+    {q:'先',a:['sen','saki'],m:{vi:'Trước',en:'Previous'},hv:'Tiên',hint:'Chân (儿) đi trước người khác = Tiên phong'},
+    {q:'友',a:['yuu','tomo'],m:{vi:'Bạn',en:'Friend'},hv:'Hữu',hint:'Hai tay (ナ+又) nắm chặt nhau = bạn bè'},
+    {q:'父',a:['chichi','fu'],m:{vi:'Cha',en:'Father'},hv:'Phụ',hint:'Bàn tay (丷) cầm roi = cha dạy con'},
+    {q:'母',a:['haha','bo'],m:{vi:'Mẹ',en:'Mother'},hv:'Mẫu',hint:'Người mẹ (母) ôm 2 đứa con (hai chấm bên trong)'}]},
   nature:{id:'nature',label:'Tự nhiên',items:[
-    {q:'山',a:['yama','san'],m:{vi:'Núi',en:'Mountain'}},{q:'川',a:['kawa','gawa'],m:{vi:'Sông',en:'River'}},
-    {q:'天',a:['ten','ame'],m:{vi:'Trời',en:'Sky'}},{q:'雨',a:['ame','u'],m:{vi:'Mưa',en:'Rain'}},
-    {q:'花',a:['hana','ka'],m:{vi:'Hoa',en:'Flower'}},{q:'空',a:['sora','kuu'],m:{vi:'Bầu trời',en:'Sky'}}]},
+    {q:'山',a:['yama','san'],m:{vi:'Núi',en:'Mountain'},hv:'Sơn',hint:'Ba đỉnh núi nhô lên, đỉnh giữa cao nhất'},
+    {q:'川',a:['kawa','gawa'],m:{vi:'Sông',en:'River'},hv:'Xuyên',hint:'Ba dòng nước chảy song song xuống'},
+    {q:'天',a:['ten','ame'],m:{vi:'Trời',en:'Sky'},hv:'Thiên',hint:'Trên đầu người (大) có 1 nét = bầu trời'},
+    {q:'雨',a:['ame','u'],m:{vi:'Mưa',en:'Rain'},hv:'Vũ',hint:'Mái nhà (一冂) bên trong có các giọt mưa rơi'},
+    {q:'花',a:['hana','ka'],m:{vi:'Hoa',en:'Flower'},hv:'Hoa',hint:'Cỏ (艹) ở trên, hóa (化) ở dưới = cỏ hóa thành hoa'},
+    {q:'空',a:['sora','kuu'],m:{vi:'Bầu trời',en:'Sky'},hv:'Không',hint:'Hang (穴) trống rỗng = bầu trời rộng lớn trống không'}]},
   actions:{id:'actions',label:'Hành động',items:[
-    {q:'見',a:['mi','ken'],m:{vi:'Xem',en:'See'}},{q:'聞',a:['ki','bun'],m:{vi:'Nghe',en:'Listen'}},
-    {q:'読',a:['yo','doku'],m:{vi:'Đọc',en:'Read'}},{q:'書',a:['ka','sho'],m:{vi:'Viết',en:'Write'}},
-    {q:'食',a:['ta','shoku'],m:{vi:'Ăn',en:'Eat'}},{q:'飲',a:['no','in'],m:{vi:'Uống',en:'Drink'}},
-    {q:'話',a:['hana','wa'],m:{vi:'Nói',en:'Talk'}},{q:'行',a:['i','kou'],m:{vi:'Đi',en:'Go'}},
-    {q:'来',a:['ku','rai'],m:{vi:'Đến',en:'Come'}},{q:'出',a:['de','shutsu'],m:{vi:'Ra',en:'Exit'}}]}
+    {q:'見',a:['mi','ken'],m:{vi:'Xem',en:'See'},hv:'Kiến',hint:'Mắt (目) ở trên đôi chân (儿) = đi xem'},
+    {q:'聞',a:['ki','bun'],m:{vi:'Nghe',en:'Listen'},hv:'Văn',hint:'Tai (耳) đặt trong cổng (門) = lắng nghe tin tức'},
+    {q:'読',a:['yo','doku'],m:{vi:'Đọc',en:'Read'},hv:'Độc',hint:'Lời nói (言) + Bán (売) = mua lời hay → đọc sách'},
+    {q:'書',a:['ka','sho'],m:{vi:'Viết',en:'Write'},hv:'Thư',hint:'Bút (聿) viết lên giấy, xếp thành sách (日)'},
+    {q:'食',a:['ta','shoku'],m:{vi:'Ăn',en:'Eat'},hv:'Thực',hint:'Mái nhà (人) che đậy bát cơm tốt (良) = bữa ăn'},
+    {q:'飲',a:['no','in'],m:{vi:'Uống',en:'Drink'},hv:'Ẩm',hint:'Ăn (食) + Thiếu (欠) = miệng há ra uống'},
+    {q:'話',a:['hana','wa'],m:{vi:'Nói',en:'Talk'},hv:'Thoại',hint:'Lời (言) + Lưỡi (舌) = dùng lưỡi nói lời'},
+    {q:'行',a:['i','kou'],m:{vi:'Đi',en:'Go'},hv:'Hành',hint:'Ngã ba đường, bước chân đi = hành động'},
+    {q:'来',a:['ku','rai'],m:{vi:'Đến',en:'Come'},hv:'Lai',hint:'Cây lúa (米) sắp tới mùa = mùa đến rồi'},
+    {q:'出',a:['de','shutsu'],m:{vi:'Ra',en:'Exit'},hv:'Xuất',hint:'Hai ngọn núi (山山) chồng lên = vượt qua để ra ngoài'}]}
 };
 
 const VOCAB_N4 = {
@@ -207,13 +242,19 @@ const VOCAB_N4 = {
 };
 const KANJI_N4 = {
   n4_verbs:{id:'n4_verbs',label:'Động từ (N4)',items:[
-    {q:'思',a:['omo','shi'],m:{vi:'Tư',en:'Think'}},{q:'知',a:['shi','chi'],m:{vi:'Tri',en:'Know'}},
-    {q:'答',a:['kota','tou'],m:{vi:'Đáp',en:'Answer'}},{q:'作',a:['tsuku','saku'],m:{vi:'Tác',en:'Make'}},
-    {q:'教',a:['oshi','kyou'],m:{vi:'Giáo',en:'Teach'}},{q:'売',a:['u','bai'],m:{vi:'Mại',en:'Sell'}}]},
+    {q:'思',a:['omo','shi'],m:{vi:'Tư',en:'Think'},hv:'Tư',hint:'Ruộng (田) + Tâm (心) = nghĩ trong lòng'},
+    {q:'知',a:['shi','chi'],m:{vi:'Tri',en:'Know'},hv:'Tri',hint:'Mũi tên (矢) + Miệng (口) = nói trúng = hiểu biết'},
+    {q:'答',a:['kota','tou'],m:{vi:'Đáp',en:'Answer'},hv:'Đáp',hint:'Tre (竹) + Hợp (合) = ghép tre thành câu trả lời'},
+    {q:'作',a:['tsuku','saku'],m:{vi:'Tác',en:'Make'},hv:'Tác',hint:'Người (亻) + Làm = người tạo ra thứ gì đó'},
+    {q:'教',a:['oshi','kyou'],m:{vi:'Giáo',en:'Teach'},hv:'Giáo',hint:'Hiếu (孝) + Roi (攵) = dùng roi dạy dỗ'},
+    {q:'売',a:['u','bai'],m:{vi:'Mại',en:'Sell'},hv:'Mại',hint:'Sĩ (士) đứng trên bàn bán hàng (儿)'}]},
   n4_nouns:{id:'n4_nouns',label:'Danh từ (N4)',items:[
-    {q:'心',a:['kokoro','shin'],m:{vi:'Tâm',en:'Heart'}},{q:'体',a:['karada','tai'],m:{vi:'Thể',en:'Body'}},
-    {q:'声',a:['koe','sei'],m:{vi:'Thanh',en:'Voice'}},{q:'頭',a:['atama','zu'],m:{vi:'Đầu',en:'Head'}},
-    {q:'顔',a:['kao','gan'],m:{vi:'Nhan',en:'Face'}},{q:'首',a:['kubi','shu'],m:{vi:'Thủ',en:'Neck'}}]}
+    {q:'心',a:['kokoro','shin'],m:{vi:'Tâm',en:'Heart'},hv:'Tâm',hint:'Trái tim có 3 giọt máu đang đập'},
+    {q:'体',a:['karada','tai'],m:{vi:'Thể',en:'Body'},hv:'Thể',hint:'Người (亻) + Gốc (本) = cơ thể là gốc rễ con người'},
+    {q:'声',a:['koe','sei'],m:{vi:'Thanh',en:'Voice'},hv:'Thanh',hint:'Sĩ (士) đứng hét lớn = phát ra tiếng'},
+    {q:'頭',a:['atama','zu'],m:{vi:'Đầu',en:'Head'},hv:'Đầu',hint:'Đậu (豆) + Trang (頁) = cái đầu tròn như hạt đậu'},
+    {q:'顔',a:['kao','gan'],m:{vi:'Nhan',en:'Face'},hv:'Nhan',hint:'Vẻ mặt (彦) + Trang (頁) = gương mặt đẹp'},
+    {q:'首',a:['kubi','shu'],m:{vi:'Thủ',en:'Neck'},hv:'Thủ',hint:'Đầu (丷) ở trên cổ, tự mình = thủ lĩnh'}]}
 };
 
 const ALL_VOCAB = { ...VOCAB_N5, ...VOCAB_N4 };
@@ -223,7 +264,7 @@ const VOCAB_CATS = Object.keys(ALL_VOCAB);
 const KANJI_CATS = Object.keys(ALL_KANJI);
 const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0, corrects: 0 };
 const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
-const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
+const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,hv:i.hv||'',hint:i.hint||'',mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const defaultVocabData = genVocabList();
 const defaultKanjiData = genKanjiList();
 
@@ -379,7 +420,7 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
       const todayCount = (settings.studyHistory||{})[today] || 0;
       if(todayMin === 0 && todayCount === 0) return null;
       return (
-        <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-red-200 dark:border-red-800/50" title={`Hôm nay: ${todayMin} phút, ${todayCount} câu đúng`}>
+        <div className="hidden min-[380px]:flex items-center gap-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-red-200 dark:border-red-800/50" title={`Hôm nay: ${todayMin} phút, ${todayCount} câu đúng`}>
           <span className="text-sm sm:text-base">⏱️</span>
           <span className="text-sm sm:text-base font-black text-red-500">{todayMin}'</span>
           <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">·</span>
@@ -388,7 +429,7 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
       );
     })()}
     {displayName && (
-      <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
+      <div className="hidden sm:flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-600">
         <span className="text-xs sm:text-sm font-bold text-[#3182ce] dark:text-blue-400">Chào {displayName}</span>
         <button onClick={onLogout} className="text-xs text-gray-400 hover:text-red-500 transition-colors ml-1" title="Đăng xuất">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-1.048a.75.75 0 10-1.06-1.06l-2.25 2.25a.75.75 0 000 1.06l2.25 2.25a.75.75 0 101.06-1.06l-1.048-1.048h9.546A.75.75 0 0019 10z" clipRule="evenodd" /></svg>
@@ -409,6 +450,504 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
     </button>
   </div>
 );
+
+// ===== SIDEBAR COMPONENT =====
+function Sidebar({ isOpen, onClose, activeSection, onSelectSection }) {
+  const [isClosing, setIsClosing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) setIsClosing(false);
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 280); // matches animation duration
+  };
+
+  if (!isOpen && !isClosing) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex pointer-events-none">
+      {/* Backdrop */}
+      <div 
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity pointer-events-auto ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
+        onClick={handleClose}
+      />
+      {/* Sidebar Panel */}
+      <div 
+        className={`relative w-[280px] max-w-[85vw] h-full bg-[#fcfcfc] dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col pointer-events-auto ${isClosing ? 'animate-slide-out' : 'animate-slide-in'}`}
+      >
+        <div className="absolute top-4 sm:top-5 left-4 sm:left-5 flex items-center gap-3 z-10">
+          <button onClick={handleClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+          </button>
+          <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 flex items-center gap-2.5 tracking-tight">
+            trunk chơn kúc
+          </h2>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto mt-[72px] sm:mt-[76px] py-2 px-3 flex flex-col gap-1.5">
+          <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức Năng</div>
+          <button 
+            onClick={() => { onSelectSection('learning'); handleClose(); }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'learning' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+          >
+            <span className="text-xl w-6 text-center">📚</span>
+            <span>Học Tập</span>
+          </button>
+          <button 
+            onClick={() => { onSelectSection('materials'); handleClose(); }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'materials' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+          >
+            <span className="text-xl w-6 text-center">📖</span>
+            <span>Tài Liệu</span>
+          </button>
+          <button 
+            onClick={() => { onSelectSection('roadmap'); handleClose(); }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'roadmap' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+          >
+            <span className="text-xl w-6 text-center">🗺️</span>
+            <span>Lộ Trình Học</span>
+          </button>
+        </div>
+        
+        <div className="p-4 text-xs font-semibold text-gray-400 dark:text-gray-600 flex items-center justify-center gap-1.5">
+          <span className="text-base grayscale opacity-50">🇯🇵</span> Học tiếng Nhật cùng nhau nào!
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== STROKE VIEWER COMPONENT =====
+// Supports 'refreshKey' to replay animation
+function StrokeViewer({ char, refreshKey }) {
+  const [svgData, setSvgData] = React.useState(null);
+  const [error, setError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!char) return;
+    setSvgData(null); setError(false);
+    const code = char.charCodeAt(0).toString(16).padStart(5, '0');
+    fetch(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${code}.svg`)
+      .then(res => {
+         if(!res.ok) throw new Error('Not found');
+         return res.text();
+      })
+      .then(txt => {
+         // Strip DOCTYPE declarations that cause ]> rendering artifacts
+         let cleanTxt = txt.substring(txt.indexOf('<svg'));
+         let pathCount = 0;
+         let numCount = 0;
+         let fixed = cleanTxt
+           .replace(/stroke="#[0-9a-fA-F]+"/g, 'stroke="currentColor"')
+           .replace(/stroke:#[0-9a-fA-F]+/g, 'stroke:currentColor')
+           .replace(/fill="#[0-9a-fA-F]+"/g, 'fill="currentColor"')
+           .replace(/fill:#[0-9a-fA-F]+/g, 'fill:currentColor')
+           .replace(/fill="#808080"/gi, 'fill="#f59e0b"')
+           .replace(/width="[0-9.]+"/g, 'width="100%"')
+           .replace(/height="[0-9.]+"/g, 'height="100%"')
+           .replace(/<path\b([^>]*)>/g, (m, attrs) => {
+              let delay = (pathCount * 0.8).toFixed(1);
+              pathCount++;
+              return `<path ${attrs} style="stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: drawStroke 1s ease-out forwards ${delay}s;" />`;
+           })
+           .replace(/<text\b([^>]*)>/g, (m, attrs) => {
+              let delay = (numCount * 0.8).toFixed(1);
+              numCount++;
+              return `<text ${attrs} style="opacity: 0; animation: fadeIn 0.3s ease forwards ${delay}s; font-weight: bold; font-size: 14px;" >`;
+           });
+         setSvgData(fixed);
+      })
+      .catch((e) => setError(true));
+  }, [char, refreshKey]);
+
+  if (error) {
+     return (
+       <div className="flex flex-col items-center justify-center text-red-500 text-center animate-fade-in p-4 w-full h-full">
+         <span className="text-4xl mb-3">🤔</span>
+         <span className="font-bold text-sm">Chưa có dữ liệu nét chữ.</span>
+       </div>
+     );
+  }
+
+  if (!svgData) {
+     return (
+       <div className="flex items-center justify-center w-full h-full">
+         <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-[#3182ce] rounded-full animate-spin"></div>
+       </div>
+     );
+  }
+
+  return <div className="w-full h-full relative z-10" dangerouslySetInnerHTML={{__html: svgData}}></div>;
+}
+
+// ===== STROKE MODAL COMPONENT =====
+function StrokeModal({ char, onClose }) {
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
+  if (!char) return null;
+
+  return (
+    <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center p-4">
+       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}></div>
+       <div className="relative bg-[#fcfcfc] dark:bg-gray-800 rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 flex flex-col items-center animate-slide-in">
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white mb-6 mt-2 flex flex-col items-center gap-1">
+            <span className="text-[#3182ce] dark:text-blue-400 text-sm font-bold uppercase tracking-widest">Cách viết chữ</span>
+            <span className="text-5xl my-2 kana-text text-gray-900 dark:text-gray-50">{char}</span>
+          </h3>
+          
+          <div className="w-full aspect-square border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[1.5rem] p-4 relative text-gray-800 dark:text-gray-100 mb-6 bg-gray-50 dark:bg-gray-900 overflow-hidden shadow-inner">
+             <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
+               <div className="w-full h-px border-t border-dashed border-gray-400"></div>
+               <div className="h-full w-px border-l border-dashed border-gray-400 absolute"></div>
+             </div>
+             <StrokeViewer char={char} refreshKey={refreshKey} />
+          </div>
+
+          <div className="flex w-full gap-3 mt-1">
+             <button onClick={() => setRefreshKey(k => k + 1)} className="flex-1 py-3.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 active:scale-95 text-sm">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+               Xem Lại
+             </button>
+             <div className="px-4 py-3.5 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-bold rounded-2xl text-sm flex items-center justify-center">
+                Đường nét có phân số
+             </div>
+          </div>
+       </div>
+    </div>
+  );
+}
+// ===== ROADMAP SCREEN COMPONENT =====
+function RoadmapScreen({ toggleSidebar, kanaData, vocabData, kanjiData }) {
+  // Compute progress for each stage
+  const computeProgress = React.useMemo(() => {
+    const kanaTotal = kanaData.length;
+    const kanaLearned = kanaData.filter(k => k.corrects >= 3).length;
+    const kanaPct = kanaTotal > 0 ? Math.round((kanaLearned / kanaTotal) * 100) : 0;
+
+    const hiraItems = kanaData.filter(k => k.id.startsWith('hiragana_'));
+    const hiraLearned = hiraItems.filter(k => k.corrects >= 3).length;
+    const hiraPct = hiraItems.length > 0 ? Math.round((hiraLearned / hiraItems.length) * 100) : 0;
+
+    const kataItems = kanaData.filter(k => k.id.startsWith('katakana_'));
+    const kataLearned = kataItems.filter(k => k.corrects >= 3).length;
+    const kataPct = kataItems.length > 0 ? Math.round((kataLearned / kataItems.length) * 100) : 0;
+
+    const vocabN5 = vocabData.filter(v => !v.groupId.startsWith('n4_'));
+    const vocabN5Learned = vocabN5.filter(v => v.corrects >= 3).length;
+    const vocabN5Pct = vocabN5.length > 0 ? Math.round((vocabN5Learned / vocabN5.length) * 100) : 0;
+
+    const kanjiN5 = kanjiData.filter(k => !k.groupId.startsWith('n4_'));
+    const kanjiN5Learned = kanjiN5.filter(k => k.corrects >= 3).length;
+    const kanjiN5Pct = kanjiN5.length > 0 ? Math.round((kanjiN5Learned / kanjiN5.length) * 100) : 0;
+
+    const vocabN4 = vocabData.filter(v => v.groupId.startsWith('n4_'));
+    const vocabN4Learned = vocabN4.filter(v => v.corrects >= 3).length;
+    const vocabN4Pct = vocabN4.length > 0 ? Math.round((vocabN4Learned / vocabN4.length) * 100) : 0;
+
+    const kanjiN4 = kanjiData.filter(k => k.groupId.startsWith('n4_'));
+    const kanjiN4Learned = kanjiN4.filter(k => k.corrects >= 3).length;
+    const kanjiN4Pct = kanjiN4.length > 0 ? Math.round((kanjiN4Learned / kanjiN4.length) * 100) : 0;
+
+    return { hiraPct, kataPct, kanaPct, vocabN5Pct, kanjiN5Pct, vocabN4Pct, kanjiN4Pct,
+      hiraLearned, hiraTotal: hiraItems.length, kataLearned, kataTotal: kataItems.length,
+      vocabN5Learned, vocabN5Total: vocabN5.length, kanjiN5Learned, kanjiN5Total: kanjiN5.length,
+      vocabN4Learned, vocabN4Total: vocabN4.length, kanjiN4Learned, kanjiN4Total: kanjiN4.length };
+  }, [kanaData, vocabData, kanjiData]);
+
+  const p = computeProgress;
+
+  // Determine current stage
+  const getCurrentStage = () => {
+    if (p.hiraPct < 50) return 0;
+    if (p.kataPct < 50) return 1;
+    if (p.vocabN5Pct < 30) return 2;
+    if (p.kanjiN5Pct < 30) return 3;
+    if (p.vocabN5Pct < 80 || p.kanjiN5Pct < 80) return 4;
+    if (p.vocabN4Pct < 30) return 5;
+    return 6;
+  };
+  const currentStage = getCurrentStage();
+
+  const stages = [
+    {
+      title: 'Bước 1: Hiragana',
+      icon: 'あ',
+      desc: 'Bảng chữ cái đầu tiên — nền tảng của mọi thứ',
+      tip: 'Mỗi ngày học 5 chữ, luyện viết + quiz. Khoảng 2 tuần là xong!',
+      progress: p.hiraPct,
+      detail: `${p.hiraLearned}/${p.hiraTotal} chữ đã thuộc`,
+      color: 'from-pink-500 to-rose-400',
+      bg: 'bg-pink-50 dark:bg-pink-900/20',
+      border: 'border-pink-200 dark:border-pink-800',
+    },
+    {
+      title: 'Bước 2: Katakana',
+      icon: 'カ',
+      desc: 'Bảng chữ cái thứ hai — dùng cho từ ngoại lai',
+      tip: 'Cách học giống Hiragana. Song song đọc thêm bảng hiệu, menu Nhật.',
+      progress: p.kataPct,
+      detail: `${p.kataLearned}/${p.kataTotal} chữ đã thuộc`,
+      color: 'from-blue-500 to-cyan-400',
+      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      border: 'border-blue-200 dark:border-blue-800',
+    },
+    {
+      title: 'Bước 3: Từ Vựng N5',
+      icon: '📝',
+      desc: 'Từ vựng cơ bản — lời chào, số đếm, gia đình, thời gian',
+      tip: 'Học qua flashcard + quiz mỗi ngày. Nghe phát âm thật nhiều!',
+      progress: p.vocabN5Pct,
+      detail: `${p.vocabN5Learned}/${p.vocabN5Total} từ đã thuộc`,
+      color: 'from-emerald-500 to-green-400',
+      bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+      border: 'border-emerald-200 dark:border-emerald-800',
+    },
+    {
+      title: 'Bước 4: Kanji N5',
+      icon: '漢',
+      desc: 'Chữ Hán cơ bản — số, ngày, người, tự nhiên',
+      tip: 'Dùng mẹo nhớ (Chiết tự) + Âm Hán Việt để ghi nhớ nhanh!',
+      progress: p.kanjiN5Pct,
+      detail: `${p.kanjiN5Learned}/${p.kanjiN5Total} chữ đã thuộc`,
+      color: 'from-orange-500 to-amber-400',
+      bg: 'bg-orange-50 dark:bg-orange-900/20',
+      border: 'border-orange-200 dark:border-orange-800',
+    },
+    {
+      title: 'Bước 5: Ôn Tập N5',
+      icon: '🏆',
+      desc: 'Ôn tổng hợp — đạt 80%+ Vocab & Kanji N5 để lên N4',
+      tip: 'Dùng SRS (ôn tập ngắt quãng) + Time Attack để tăng tốc!',
+      progress: Math.round((p.vocabN5Pct + p.kanjiN5Pct) / 2),
+      detail: `Vocab ${p.vocabN5Pct}% · Kanji ${p.kanjiN5Pct}%`,
+      color: 'from-purple-500 to-violet-400',
+      bg: 'bg-purple-50 dark:bg-purple-900/20',
+      border: 'border-purple-200 dark:border-purple-800',
+    },
+    {
+      title: 'Bước 6: Từ Vựng & Kanji N4',
+      icon: '🚀',
+      desc: 'Nâng cao — xã hội, động từ, danh từ trừu tượng',
+      tip: 'Kết hợp nghe nhạc Nhật, xem anime có sub để quen tai!',
+      progress: Math.round((p.vocabN4Pct + p.kanjiN4Pct) / 2),
+      detail: `Vocab ${p.vocabN4Learned}/${p.vocabN4Total} · Kanji ${p.kanjiN4Learned}/${p.kanjiN4Total}`,
+      color: 'from-red-500 to-pink-400',
+      bg: 'bg-red-50 dark:bg-red-900/20',
+      border: 'border-red-200 dark:border-red-800',
+    },
+  ];
+
+  // Overall progress
+  const overallPct = Math.round((p.hiraPct + p.kataPct + p.vocabN5Pct + p.kanjiN5Pct + p.vocabN4Pct + p.kanjiN4Pct) / 6);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#fcfcfc] dark:bg-gray-900 transition-colors duration-300 w-full overflow-hidden">
+      {/* Header */}
+      <div className="absolute top-4 sm:top-5 left-4 sm:left-5 flex items-center gap-3 z-[60]">
+        <button onClick={toggleSidebar} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+        </button>
+        <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+          Za Pan <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 tracking-normal normal-case shadow-sm">Lộ Trình</span>
+        </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto w-full p-4 pb-20 max-w-2xl mx-auto mt-[72px] sm:mt-[76px]">
+        {/* Overall Progress Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-teal-400 rounded-3xl p-6 mb-8 text-white shadow-lg pop-in">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-extrabold">Tổng Tiến Độ</h2>
+              <p className="text-sm opacity-80">Hành trình học tiếng Nhật của bạn</p>
+            </div>
+            <div className="text-4xl font-black">{overallPct}%</div>
+          </div>
+          <div className="w-full h-3 bg-white/30 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-700" style={{width: `${overallPct}%`}}></div>
+          </div>
+          <p className="text-xs mt-2 opacity-70">
+            {currentStage === 0 ? '🌱 Mới bắt đầu — Bạn đang ở bước đầu tiên!' :
+             currentStage <= 2 ? '📚 Đang xây nền tảng — Tiếp tục phát huy!' :
+             currentStage <= 4 ? '💪 Sắp hoàn thành N5 — Cố lên nào!' :
+             '🔥 Đang chinh phục N4 — Bạn giỏi lắm!'}
+          </p>
+        </div>
+
+        {/* Roadmap Timeline */}
+        <div className="relative">
+          {/* Vertical Line */}
+          <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+
+          {stages.map((stage, i) => {
+            const isActive = i === currentStage;
+            const isDone = stage.progress >= 80;
+            const isLocked = i > currentStage + 1;
+
+            return (
+              <div key={i} className={`relative flex items-start gap-4 mb-6 pop-in ${isLocked ? 'opacity-40' : ''}`} style={{animationDelay: `${i * 0.08}s`}}>
+                {/* Node Circle */}
+                <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0 border-2 transition-all shadow-md ${
+                  isDone ? 'bg-green-500 border-green-400 text-white' :
+                  isActive ? `bg-gradient-to-br ${stage.color} border-white dark:border-gray-600 text-white ring-4 ring-blue-200 dark:ring-blue-800 animate-pulse` :
+                  'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400'
+                }`}>
+                  {isDone ? '✓' : stage.icon}
+                </div>
+
+                {/* Content Card */}
+                <div className={`flex-1 rounded-2xl p-4 border transition-all ${
+                  isActive ? `${stage.bg} ${stage.border} shadow-md` :
+                  isDone ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                  'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                }`}>
+                  <div className="flex items-start justify-between mb-1">
+                    <h3 className={`font-extrabold text-sm sm:text-base ${isDone ? 'text-green-600 dark:text-green-400' : isActive ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                      {stage.title} {isDone && '✅'}
+                    </h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      isDone ? 'bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-300' :
+                      isActive ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' :
+                      'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                    }`}>{stage.progress}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{stage.desc}</p>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                    <div className={`h-full rounded-full bg-gradient-to-r ${stage.color} transition-all duration-700`} style={{width: `${stage.progress}%`}}></div>
+                  </div>
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold">{stage.detail}</div>
+
+                  {/* Tip for active stage */}
+                  {isActive && (
+                    <div className="mt-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-xl px-3 py-2 text-xs text-yellow-700 dark:text-yellow-300 font-medium flex items-start gap-1.5">
+                      <span className="text-base leading-none">💡</span>
+                      <span>{stage.tip}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Motivation Footer */}
+        <div className="text-center mt-4 mb-8">
+          <div className="text-5xl mb-3">
+            {overallPct === 0 ? '🌱' : overallPct < 25 ? '🌿' : overallPct < 50 ? '🌳' : overallPct < 75 ? '🌸' : '🎊'}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold italic">
+            {overallPct === 0 ? '"Hành trình vạn dặm bắt đầu từ một bước chân" — Lão Tử' :
+             overallPct < 25 ? '"Kiên trì là chìa khóa thành công" — Bạn đang làm tốt lắm!' :
+             overallPct < 50 ? '"Nước chảy đá mòn" — Tiến bộ hàng ngày rồi đó!' :
+             overallPct < 75 ? '"Trèo cao ngã đau, nhưng nhìn xa hơn" — Sắp đến đích rồi!' :
+             '🎉 "Bạn là ngôi sao!" — Đẳng cấp JLPT đây rồi!'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== MATERIALS SCREEN COMPONENT =====
+function MaterialsScreen({ toggleSidebar }) {
+  const [chartType, setChartType] = React.useState('hiragana'); // hiragana | katakana
+  const [subCategory, setSubCategory] = React.useState('main'); // main | dakuten | combination
+  const [viewedChar, setViewedChar] = React.useState('');
+
+  const renderKanaGrid = (data, prefix, colsClass) => (
+    <div className={`grid ${colsClass} gap-2 sm:gap-4 mb-4`}>
+      {data.map((row, rIdx) => 
+        row.items.map((item, idx) => {
+          const uniqueKey = prefix + rIdx + '-' + idx;
+          if (!item.q) return <div key={uniqueKey} className="aspect-square opacity-0 pointer-events-none"></div>;
+          return (
+            <div 
+              key={uniqueKey} 
+              onClick={() => setViewedChar(item.q)}
+              className="aspect-square flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer active:scale-95 transition-all group relative overflow-hidden"
+              role="button"
+            >
+              <span className="text-2xl sm:text-4xl kana-text font-black text-gray-800 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors z-10">{item.q}</span>
+              <span className="text-xs sm:text-sm text-gray-400 font-bold mt-0.5 sm:mt-1 z-10">{item.a[0]}</span>
+              <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#fcfcfc] dark:bg-gray-900 transition-colors duration-300 w-full overflow-hidden">
+      {/* Header Container Global (Matching Sidebar exactly) */}
+      <div className="absolute top-4 sm:top-5 left-4 sm:left-5 flex items-center gap-3 z-[60]">
+         <button onClick={toggleSidebar} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
+           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+         </button>
+         <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+           Za Pan <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 hidden sm:block tracking-normal normal-case shadow-sm">Bảng Chữ Cái</span>
+         </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto w-full p-4 pb-20 max-w-4xl mx-auto mt-[72px] sm:mt-[76px]">
+        
+        {/* Main Toggles (Hiragana/Katakana) */}
+        <div className="flex gap-2 max-w-sm mx-auto mb-6">
+          <button onClick={()=>setChartType('hiragana')} className={`flex-1 py-3 rounded-[1.25rem] font-extrabold text-sm sm:text-base border-2 transition-all focus:outline-none shadow-sm ${chartType==='hiragana' ? 'border-[#3182ce] bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-500' : 'border-gray-200 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'}`}>Hiragana</button>
+          <button onClick={()=>setChartType('katakana')} className={`flex-1 py-3 rounded-[1.25rem] font-extrabold text-sm sm:text-base border-2 transition-all focus:outline-none shadow-sm ${chartType==='katakana' ? 'border-[#3182ce] bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-500' : 'border-gray-200 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'}`}>Katakana</button>
+        </div>
+
+        {/* Sub Toggles (Basic/Dakuten/Yoon) */}
+        <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl w-full max-w-md mx-auto mb-8 font-bold text-sm shadow-inner">
+          <button onClick={()=>setSubCategory('main')} className={`flex-1 py-2 sm:py-2.5 rounded-xl transition-all ${subCategory==='main' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>Cơ Bản</button>
+          <button onClick={()=>setSubCategory('dakuten')} className={`flex-1 py-2 sm:py-2.5 rounded-xl transition-all ${subCategory==='dakuten' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>Biến Âm</button>
+          <button onClick={()=>setSubCategory('combination')} className={`flex-1 py-2 sm:py-2.5 rounded-xl transition-all ${subCategory==='combination' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>Chữ Ghép</button>
+        </div>
+            
+        <div className="w-full pop-in">
+           {subCategory === 'main' && (
+             <div className="pop-in">
+               <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 px-1">
+                 <span className="text-xl">⭐️</span> Chữ Cơ Bản
+               </h3>
+               {renderKanaGrid(KANA_DEF[chartType].main, 'main', 'grid-cols-5')}
+             </div>
+           )}
+
+           {subCategory === 'dakuten' && (
+             <div className="pop-in">
+               <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 px-1">
+                 <span className="text-xl">✨</span> Chữ Biến Âm (Dakuten)
+               </h3>
+               {renderKanaGrid(KANA_DEF[chartType].dakuten, 'daku', 'grid-cols-5')}
+             </div>
+           )}
+
+           {subCategory === 'combination' && (
+             <div className="pop-in">
+               <h3 className="text-lg font-bold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 px-1">
+                 <span className="text-xl">💫</span> Chữ Ghép (Yoon)
+               </h3>
+               {renderKanaGrid(KANA_DEF[chartType].combination, 'yoon', 'grid-cols-3')}
+             </div>
+           )}
+        </div>
+      </div>
+
+      <StrokeModal char={viewedChar} onClose={() => setViewedChar('')} />
+    </div>
+  );
+}
 
 function StatsScreen({ backToMenu, kanaData, vocabData, kanjiData }) {
   const chartRef = React.useRef(null);
@@ -822,6 +1361,8 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
              <div className="flex flex-col items-center">
                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-normal mb-1">{settings.lang==='vi'?currentItem.meaning?.vi:currentItem.meaning?.en}</span>
                <span className="text-[#3182ce] dark:text-blue-400">{currentItem.answer ? (Array.isArray(currentItem.answer) ? currentItem.answer[0] : currentItem.answer) : displayString}</span>
+               {currentItem.hv && <span className="mt-1 inline-flex items-center gap-1 bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 px-2.5 py-0.5 rounded-full text-xs font-bold border border-orange-200 dark:border-orange-700">🇻🇳 {currentItem.hv}</span>}
+               {currentItem.hint && <span className="mt-1 text-[10px] text-gray-400 dark:text-gray-500 italic text-center max-w-[250px]">💡 {currentItem.hint}</span>}
              </div>
           ) : (
              <div className="flex justify-center items-center gap-2 text-[#3182ce] dark:text-blue-400">
@@ -833,7 +1374,8 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
       </div>
 
       {/* CANVAS GRID CONTAINER */}
-      <div className={`w-full grid ${gridClass} gap-2 sm:gap-4 mb-4 sm:mb-6 transition-all mx-auto`} style={isFullscreen ? {maxHeight: '40vh'} : {}}>
+      <div className="w-full max-w-2xl px-2 mb-2 text-center text-xs text-gray-400 font-bold">↕ Vuốt phần ngoài ô vẽ để cuộn trang</div>
+      <div className={`w-full grid ${gridClass} gap-3 sm:gap-4 px-3 sm:px-6 mb-4 sm:mb-6 transition-all mx-auto`} style={isFullscreen ? {maxHeight: '40vh'} : {}}>
         {chars.map((char, i) => (
           <SingleCharCanvas key={`${currentIndex}-${i}`} char={char} showGuide={showGuide} 
             addClearRef={(f) => { clearFuncs.current[i] = f; }} 
@@ -1147,6 +1689,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
 
   const [appState, setAppState] = React.useState('menu');
   const [studyMode, setStudyMode] = React.useState('kana');
+  const [mainSection, setMainSection] = React.useState('learning'); // learning | materials | roadmap
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [selectedAlphabet, setSelectedAlphabet] = React.useState('hiragana');
   const [selectedGroups, setSelectedGroups] = React.useState({ hiragana: [], katakana: [] });
   const [selectedVocabGroups, setSelectedVocabGroups] = React.useState([]);
@@ -1799,13 +2343,45 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
 
   // ===================== RENDER =====================
 
-  // --- MENU ---
+  // ===== RENDER LOGIC =====
+
+  if (mainSection === 'roadmap') {
+    return (
+      <>
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} />
+        <RoadmapScreen toggleSidebar={()=>setSidebarOpen(true)} kanaData={kanaData} vocabData={vocabData} kanjiData={kanjiData} />
+      </>
+    );
+  }
+
+  if (mainSection === 'materials') {
+    return (
+      <>
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} />
+        <MaterialsScreen toggleSidebar={()=>setSidebarOpen(true)} />
+      </>
+    );
+  }
+
+  // --- LEARNING SECTION (EXISTING APP) ---
   if(appState==='menu') {
     return (
-      <div className="min-h-screen flex flex-col items-center px-4 py-16 sm:p-8">
-        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout} onShowTutorial={onShowTutorial}/>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#3182ce] dark:text-blue-400 mt-2 mb-4 tracking-tight">{studyMode==='kana'?t.selectTitle:studyMode==='vocab'?t.vocabTitle:t.kanjiTitle}</h1>
-        <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-6">
+      <div className="min-h-screen flex flex-col items-center px-4 py-8 relative">
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} />
+        <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout} onShowTutorial={onShowTutorial} />
+        
+        {/* Toggle Hamburger & App Title GEMINI STYLE (Top Left) */}
+        <div className="absolute top-4 sm:top-5 left-4 sm:left-5 flex items-center gap-3 z-[60]">
+           <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
+             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+           </button>
+           <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+             Za Pan
+           </h1>
+        </div>
+
+        {/* Study Mode Toggles (Kana/Vocab/Kanji) */}
+        <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl mb-6 mt-[72px] sm:mt-[76px] shadow-inner">
           {[['kana','tabKana'],['vocab','tabVocab'],['kanji','tabKanji']].map(([m,k])=>(
             <button key={m} onClick={()=>setStudyMode(m)} className={`flex-1 py-3 rounded-lg font-bold text-sm sm:text-base transition-all ${studyMode===m?'bg-white dark:bg-gray-700 text-[#3182ce] dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>{t[k]}</button>
           ))}
@@ -2009,11 +2585,16 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 )}
               </span>
             )}
-            {currentKana.meaning && (status==='correct' || drawingChecked) && <div className="text-lg sm:text-xl text-green-600 dark:text-green-400 font-bold mb-6 pop-in h-8">{currentKana.meaning[settings.lang]||currentKana.meaning.en}</div>}
+            {currentKana.meaning && (status==='correct' || drawingChecked) && <div className="text-lg sm:text-xl text-green-600 dark:text-green-400 font-bold mb-2 pop-in h-8">{currentKana.meaning[settings.lang]||currentKana.meaning.en}</div>}
+            {(status==='correct' || drawingChecked) && currentKana.hv && <div className="flex flex-col items-center gap-1.5 mb-4 pop-in">
+              <span className="inline-flex items-center gap-1 bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 px-3 py-1 rounded-full text-sm font-bold border border-orange-200 dark:border-orange-700">🇻🇳 HV: {currentKana.hv}</span>
+              {currentKana.hint && <span className="text-xs text-gray-500 dark:text-gray-400 italic text-center max-w-[280px] leading-relaxed">💡 {currentKana.hint}</span>}
+            </div>}
             {currentKana.meaning && status!=='correct' && !drawingChecked && <div className="text-sm text-gray-400 dark:text-gray-500 mb-6 h-8 flex items-center">{t.meaning}: ?</div>}
           </div>
           {isDrawingMode ? (
-            <div className="w-full flex-col items-center mt-2 px-2 sm:px-0">
+            <div className="w-full flex-col items-center mt-2 px-4 sm:px-0">
+              <div className="w-full text-center text-xs text-gray-400 font-bold mb-2">↕ Vuốt phần ngoài ô vẽ để cuộn trang</div>
               <div className={`relative w-full h-[220px] sm:h-[260px] bg-white dark:bg-gray-800 border-2 rounded-3xl overflow-hidden shadow-inner flex shrink-0 ${drawingChecked ? 'border-gray-200 dark:border-gray-700 opacity-80 pointer-events-none' : 'border-dashed border-[#3182ce] dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/10'}`}>
                  <canvas ref={canvasRef} width={320} height={260} className="w-full h-full touch-none cursor-crosshair" onMouseDown={startDrawingCanvas} onMouseMove={drawCanvas} onMouseUp={stopDrawingCanvas} onMouseOut={stopDrawingCanvas} onTouchStart={startDrawingCanvas} onTouchMove={drawCanvas} onTouchEnd={stopDrawingCanvas}/>
                  {!drawingChecked && (
@@ -2315,7 +2896,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         )}
         {fillFinished && (
           <div className="flex gap-4 mb-8">
-            <button onClick={()=>{setFillAnswers({});setFillResults({});setFillFinished(false);setFocusedCardIdx(0);focusedCardIdxRef.current=0;setShuffledFillList(shuffle(activeKanaList));}} className="bg-[#3182ce] text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-blue-700 active:scale-95 transition-all">🔄 {t.retry}</button>
+            <button onClick={()=>{setFillAnswers({});setFillResults({});setFillFinished(false);setFocusedCardIdx(0);focusedCardIdxRef.current=0;setShuffledFillList(shuffle(activeKanaList));}} className="bg-[#3182ce] text-white rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg> {t.retry}</button>
             <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg hover:bg-gray-300 dark:hover:bg-gray-600 active:scale-95 transition-all">{t.menu}</button>
           </div>
         )}
