@@ -411,7 +411,7 @@ const SelectButton = ({children,isSelected,onClick,className=''}) => (
 );
 
 const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,onLogout,onShowTutorial}) => (
-  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2 sm:gap-3 z-50 items-center">
+  <div className="absolute top-4 sm:top-6 right-2 sm:right-6 flex gap-1 sm:gap-3 z-50 items-center">
     {settings.dailyStreak > 0 && (
       <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-orange-200 dark:border-orange-800/50" title="Chuỗi ngày học liên tiếp">
         <span className="text-sm sm:text-base animate-pulse shadow-orange-500/50">🔥</span>
@@ -456,9 +456,10 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
 );
 
 // ===== SIDEBAR COMPONENT =====
-function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect }) {
+function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect, studyMode }) {
   const [isClosing, setIsClosing] = React.useState(false);
   const [expandedMenu, setExpandedMenu] = React.useState('');
+  const [expandedSub, setExpandedSub] = React.useState('');
 
   React.useEffect(() => {
     if (isOpen) setIsClosing(false);
@@ -474,6 +475,11 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect 
 
   const toggleExpand = (menu) => {
     setExpandedMenu(prev => prev === menu ? '' : menu);
+    if (expandedMenu !== menu) setExpandedSub('');
+  };
+
+  const toggleSubExpand = (sub) => {
+    setExpandedSub(prev => prev === sub ? '' : sub);
   };
 
   const handleSubSelect = (section, sub) => {
@@ -488,9 +494,28 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect 
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
   );
 
+  const chevronSmall = (isExpanded) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+  );
+
   const subBtn = (label, icon, onClick, isActive) => (
     <button onClick={onClick} className={`w-full flex items-center gap-2.5 pl-11 pr-3 py-2.5 rounded-lg font-semibold transition-all text-sm ${isActive ? 'text-[#3182ce] dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200'}`}>
       <span className="text-base w-5 text-center">{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+
+  const subGroupBtn = (label, icon, subKey, colorClass) => (
+    <button onClick={() => toggleSubExpand(subKey)} className={`w-full flex items-center gap-2.5 pl-8 pr-3 py-2.5 rounded-lg font-bold transition-all text-sm ${expandedSub === subKey ? colorClass : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+      <span className="text-base w-5 text-center">{icon}</span>
+      <span className="flex-1 text-left">{label}</span>
+      {chevronSmall(expandedSub === subKey)}
+    </button>
+  );
+
+  const leafBtn = (label, icon, onClick) => (
+    <button onClick={onClick} className="w-full flex items-center gap-2 pl-14 pr-3 py-2 rounded-lg font-semibold transition-all text-[13px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200">
+      <span className="text-sm w-4 text-center">{icon}</span>
       <span>{label}</span>
     </button>
   );
@@ -508,7 +533,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect 
           <button onClick={handleClose} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
           </button>
-          <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 flex items-center gap-2.5 tracking-tight">
+          <h2 className="text-sm min-[380px]:text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 flex items-center gap-2.5 tracking-tight cursor-pointer" onClick={() => { if(onSubSelect) onSubSelect({goHome:true}); handleClose(); }}>
             chơn trunk kúc
           </h2>
         </div>
@@ -516,7 +541,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect 
         <div className="flex-1 overflow-y-auto mt-[72px] sm:mt-[76px] py-2 px-3 flex flex-col gap-0.5">
           <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức Năng</div>
           
-          {/* Học Tập - Expandable */}
+          {/* Học Tập - Expandable with 3 sub-groups */}
           <button 
             onClick={() => toggleExpand('learning')}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'learning' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
@@ -528,33 +553,54 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect 
           
           {expandedMenu === 'learning' && (
             <div className="flex flex-col gap-0.5 py-1 pop-in">
-              {/* Bảng chữ cái header */}
-              <div className="pl-11 pr-3 py-1.5 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Bảng Chữ Cái</div>
-              {subBtn('Hiragana (ひ)', 'あ', () => handleSubSelect('learning', {mode:'kana', alphabet:'hiragana'}))}
-              {subBtn('Katakana (カ)', 'カ', () => handleSubSelect('learning', {mode:'kana', alphabet:'katakana'}))}
+              {/* Kana sub-group */}
+              {subGroupBtn('Bảng Chữ Cái', 'あ', 'kana', 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20')}
+              {expandedSub === 'kana' && (
+                <div className="flex flex-col gap-0.5 pop-in">
+                  {leafBtn('Hiragana (ひ)', 'あ', () => handleSubSelect('learning', {mode:'kana', alphabet:'hiragana'}))}
+                  {leafBtn('Katakana (カ)', 'カ', () => handleSubSelect('learning', {mode:'kana', alphabet:'katakana'}))}
+                </div>
+              )}
               
-              {/* Từ Vựng */}
-              <div className="pl-11 pr-3 py-1.5 mt-1 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Từ Vựng</div>
-              {subBtn('Từ Vựng N5', '📝', () => handleSubSelect('learning', {mode:'vocab', level:'n5'}))}
-              {subBtn('Từ Vựng N4', '📝', () => handleSubSelect('learning', {mode:'vocab', level:'n4'}))}
+              {/* Từ Vựng sub-group */}
+              {subGroupBtn('Từ Vựng', '📝', 'vocab', 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/20')}
+              {expandedSub === 'vocab' && (
+                <div className="flex flex-col gap-0.5 pop-in">
+                  {leafBtn('Từ Vựng N5', '📝', () => handleSubSelect('learning', {mode:'vocab', level:'n5'}))}
+                  {leafBtn('Từ Vựng N4', '📝', () => handleSubSelect('learning', {mode:'vocab', level:'n4'}))}
+                </div>
+              )}
               
-              {/* Kanji */}
-              <div className="pl-11 pr-3 py-1.5 mt-1 text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kanji</div>
-              {subBtn('Kanji N5', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n5'}))}
-              {subBtn('Kanji N4', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n4'}))}
-              {subBtn('Kanji N3', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n3'}))}
+              {/* Kanji sub-group */}
+              {subGroupBtn('Kanji', '漢', 'kanji', 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20')}
+              {expandedSub === 'kanji' && (
+                <div className="flex flex-col gap-0.5 pop-in">
+                  {leafBtn('Kanji N5', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n5'}))}
+                  {leafBtn('Kanji N4', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n4'}))}
+                  {leafBtn('Kanji N3', '漢', () => handleSubSelect('learning', {mode:'kanji', level:'n3'}))}
+                </div>
+              )}
             </div>
           )}
           
           {/* Tài Liệu */}
+          {/* Tài Liệu - Expandable */}
           <button 
-            onClick={() => { onSelectSection('materials'); handleClose(); }}
+            onClick={() => toggleExpand('materials')}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'materials' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
           >
             <span className="text-xl w-6 text-center">📖</span>
-            <span>Tài Liệu</span>
+            <span className="flex-1 text-left">Tài Liệu</span>
+            {chevron(expandedMenu === 'materials')}
           </button>
           
+          {expandedMenu === 'materials' && (
+            <div className="flex flex-col gap-0.5 py-1 pop-in">
+              {subBtn('Bảng Chữ Cái', '🔤', () => handleSubSelect('materials', {tab:'kana'}))}
+              {subBtn('Tài Liệu Khác', '📚', () => handleSubSelect('materials', {tab:'other'}))}
+            </div>
+          )}
+
           {/* Lộ Trình Học */}
           <button 
             onClick={() => { onSelectSection('roadmap'); handleClose(); }}
@@ -807,8 +853,8 @@ function RoadmapScreen({ toggleSidebar, kanaData, vocabData, kanjiData }) {
         <button onClick={toggleSidebar} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
         </button>
-        <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
-          Za Pan <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 tracking-normal normal-case shadow-sm">Lộ Trình</span>
+        <h1 className="text-sm min-[380px]:text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+          chơn trunk kúc <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 tracking-normal normal-case shadow-sm">Lộ Trình</span>
         </h1>
       </div>
 
@@ -915,28 +961,91 @@ function MaterialsScreen({ toggleSidebar }) {
   const [subCategory, setSubCategory] = React.useState('main'); // main | dakuten | combination
   const [viewedChar, setViewedChar] = React.useState('');
 
-  const renderKanaGrid = (data, prefix, colsClass) => (
-    <div className={`grid ${colsClass} gap-2 sm:gap-4 mb-4`}>
-      {data.map((row, rIdx) => 
-        row.items.map((item, idx) => {
-          const uniqueKey = prefix + rIdx + '-' + idx;
-          if (!item.q) return <div key={uniqueKey} className="aspect-square opacity-0 pointer-events-none"></div>;
-          return (
+  // Standard kana chart layout: 5 columns (a, i, u, e, o)
+  // Some rows have fewer items and need empty cells at correct positions
+  const getStandardLayout = (data, subCat) => {
+    if (subCat !== 'main') {
+      // For dakuten and combination, just flatten normally
+      const cells = [];
+      data.forEach((row, rIdx) => {
+        row.items.forEach((item, idx) => {
+          cells.push({ ...item, rowIdx: rIdx, colIdx: idx, key: `${rIdx}-${idx}` });
+        });
+      });
+      return cells;
+    }
+    // For main kana: map each row to 5 columns (a, i, u, e, o)
+    // Special rows: ya -> [ya, _, yu, _, yo], wa -> [wa, _, _, _, wo], n -> [n]
+    const cells = [];
+    data.forEach((row, rIdx) => {
+      const id = row.id;
+      if (id === 'ya') {
+        // ya row: ya(a), empty(i), yu(u), empty(e), yo(o)
+        cells.push({ ...row.items[0], key: `${rIdx}-0` }); // ya
+        cells.push({ q: null, key: `${rIdx}-1` }); // empty
+        cells.push({ ...row.items[1], key: `${rIdx}-2` }); // yu
+        cells.push({ q: null, key: `${rIdx}-3` }); // empty
+        cells.push({ ...row.items[2], key: `${rIdx}-4` }); // yo
+      } else if (id === 'wa') {
+        // wa row: wa(a), empty(i), empty(u), empty(e), wo(o)
+        cells.push({ ...row.items[0], key: `${rIdx}-0` }); // wa
+        cells.push({ q: null, key: `${rIdx}-1` }); // empty
+        cells.push({ q: null, key: `${rIdx}-2` }); // empty
+        cells.push({ q: null, key: `${rIdx}-3` }); // empty
+        cells.push({ ...row.items[1], key: `${rIdx}-4` }); // wo
+        // n goes on its own row, centered
+        cells.push({ ...row.items[2], key: `${rIdx}-5`, isN: true }); // n
+      } else {
+        // Normal 5-item rows
+        row.items.forEach((item, idx) => {
+          cells.push({ ...item, key: `${rIdx}-${idx}` });
+        });
+      }
+    });
+    return cells;
+  };
+
+  const renderKanaGrid = (data, prefix, colsClass) => {
+    const cells = getStandardLayout(data, subCategory);
+    // Check if last item is ん (isN flag) — render separately
+    const hasN = cells.length > 0 && cells[cells.length - 1].isN;
+    const nCell = hasN ? cells.pop() : null;
+
+    return (
+      <div>
+        <div className={`grid ${colsClass} gap-2 sm:gap-4 mb-4`}>
+          {cells.map((item) => {
+            if (!item.q) return <div key={prefix + item.key} className="aspect-square opacity-0 pointer-events-none"></div>;
+            return (
+              <div 
+                key={prefix + item.key} 
+                onClick={() => setViewedChar(item.q)}
+                className="aspect-square flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer active:scale-95 transition-all group relative overflow-hidden"
+                role="button"
+              >
+                <span className="text-2xl sm:text-4xl kana-text font-black text-gray-800 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors z-10">{item.q}</span>
+                <span className="text-xs sm:text-sm text-gray-400 font-bold mt-0.5 sm:mt-1 z-10">{item.a[0]}</span>
+                <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              </div>
+            );
+          })}
+        </div>
+        {nCell && (
+          <div className="flex justify-center mb-4">
             <div 
-              key={uniqueKey} 
-              onClick={() => setViewedChar(item.q)}
-              className="aspect-square flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer active:scale-95 transition-all group relative overflow-hidden"
+              onClick={() => setViewedChar(nCell.q)}
+              className="w-16 h-16 sm:w-24 sm:h-24 flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl shadow-sm border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer active:scale-95 transition-all group relative overflow-hidden"
               role="button"
             >
-              <span className="text-2xl sm:text-4xl kana-text font-black text-gray-800 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors z-10">{item.q}</span>
-              <span className="text-xs sm:text-sm text-gray-400 font-bold mt-0.5 sm:mt-1 z-10">{item.a[0]}</span>
+              <span className="text-2xl sm:text-4xl kana-text font-black text-gray-800 dark:text-gray-100 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors z-10">{nCell.q}</span>
+              <span className="text-xs sm:text-sm text-gray-400 font-bold mt-0.5 sm:mt-1 z-10">{nCell.a[0]}</span>
               <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </div>
-          );
-        })
-      )}
-    </div>
-  );
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fcfcfc] dark:bg-gray-900 transition-colors duration-300 w-full overflow-hidden">
@@ -945,8 +1054,8 @@ function MaterialsScreen({ toggleSidebar }) {
          <button onClick={toggleSidebar} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
          </button>
-         <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
-           Za Pan <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 hidden sm:block tracking-normal normal-case shadow-sm">Bảng Chữ Cái</span>
+         <h1 className="text-sm min-[380px]:text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+           chơn trunk kúc <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-800/80 rounded-lg text-gray-500 dark:text-gray-400 font-bold ml-1 hidden sm:block tracking-normal normal-case shadow-sm">Bảng Chữ Cái</span>
          </h1>
       </div>
 
@@ -1292,10 +1401,44 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [showGuide, setShowGuide] = React.useState(true);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isShuffled, setIsShuffled] = React.useState(false);
+  const [shuffledPool, setShuffledPool] = React.useState([]);
   const clearFuncs = React.useRef({});
   const undoFuncs = React.useRef({});
   const drawTimeoutRef = React.useRef(null);
   const containerRef = React.useRef(null);
+
+  // Shuffle utility
+  const shuffleArray = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Initialize shuffled pool
+  React.useEffect(() => {
+    if (isShuffled) {
+      setShuffledPool(shuffleArray(pool));
+      setCurrentIndex(0);
+    }
+  }, [isShuffled]);
+
+  const displayPool = isShuffled ? shuffledPool : pool;
+
+  const toggleOrder = () => {
+    if (drawTimeoutRef.current) clearTimeout(drawTimeoutRef.current);
+    Object.values(clearFuncs.current).forEach(f => f && f());
+    setIsShuffled(prev => !prev);
+    if (!isShuffled) {
+      // Switching TO random — shuffledPool will be set via useEffect
+    } else {
+      // Switching TO sequential — reset index
+      setCurrentIndex(0);
+    }
+  };
   
   React.useEffect(() => {
     const wrapper = document.getElementById('writing_wrapper');
@@ -1309,7 +1452,7 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
     return () => document.removeEventListener('fullscreenchange', fsListener);
   }, [currentIndex]);
 
-  const currentItem = pool[currentIndex];
+  const currentItem = displayPool[currentIndex];
   const isVocab = currentItem?.type === 'vocab' || currentItem?.type === 'kanji';
   const displayString = isVocab ? (currentItem.question || currentItem.kanji || currentItem.answer[0]) : (currentItem?.question || '');
   const chars = displayString.split('');
@@ -1325,13 +1468,13 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
   const nextWord = React.useCallback(() => {
     if (drawTimeoutRef.current) clearTimeout(drawTimeoutRef.current);
     clearCanvas();
-    setCurrentIndex(p => (p + 1) % pool.length);
-  }, [pool.length]);
+    setCurrentIndex(p => (p + 1) % displayPool.length);
+  }, [displayPool.length]);
 
   const prevWord = () => {
     if (drawTimeoutRef.current) clearTimeout(drawTimeoutRef.current);
     clearCanvas();
-    setCurrentIndex(p => (p - 1 + pool.length) % pool.length);
+    setCurrentIndex(p => (p - 1 + displayPool.length) % displayPool.length);
   };
 
   const handleDrawEnd = () => {
@@ -1383,7 +1526,7 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
                ✍️ Luyện Viết (Writing)
             </h2>
             <p className="text-sm text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-2">
-               <span>Từ {currentIndex + 1} / {pool.length}</span>
+               <span>Từ {currentIndex + 1} / {displayPool.length}</span>
             </p>
          </>
       )}
@@ -1392,8 +1535,11 @@ function WritingPractice({ backToMenu, pool, settings, onToggleAutoNext }) {
       <div className={`flex flex-col items-center w-full max-w-2xl ${isFullscreen ? 'mb-2 mt-4' : 'mb-6'}`}>
          {/* Top action row */}
          <div className="flex justify-between items-center w-full mb-3 px-2">
-            <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">{isFullscreen ? `Từ ${currentIndex + 1} / ${pool.length}` : ''}</span>
-            <div className="flex gap-2 items-center">
+            <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">{isFullscreen ? `Từ ${currentIndex + 1} / ${displayPool.length}` : ''}</span>
+            <div className="flex gap-2 items-center flex-wrap justify-end">
+               <button onClick={toggleOrder} className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-sm border outline-none ${isShuffled ? 'bg-purple-100 text-purple-600 border-purple-200 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800' : 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`} title="Chuyển đổi thứ tự xuất hiện">
+                  {isShuffled ? '🔀 Ngẫu Nhiên' : '📋 Thứ Tự'}
+               </button>
                <button onClick={onToggleAutoNext} className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-sm border outline-none ${settings.autoNextWriting !== false ? 'bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800' : 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`} title="Tự động qua từ khi viết xong">
                   {settings.autoNextWriting !== false ? '⏩ Auto-Next: BẬT' : '⏸ Auto-Next: TẮT'}
                </button>
@@ -1666,23 +1812,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     });
   };
 
-  // Track study time in minutes (every 60s while in a study mode)
-  const appStateRef = React.useRef(appState);
-  appStateRef.current = appState;
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      const studyStates = ['quiz','timeattack','survival','fill','matchgame','writing','confusable'];
-      if(studyStates.includes(appStateRef.current)) {
-        const today = new Date().toISOString().slice(0,10);
-        setSettings(prev => {
-          const sm = {...(prev.studyMinutes||{})};
-          sm[today] = (sm[today]||0) + 1;
-          return {...prev, studyMinutes: sm};
-        });
-      }
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
+
   const t = T[settings.lang] || T.vi;
 
   // Streak logic effect
@@ -1746,6 +1876,24 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const [selectedGroups, setSelectedGroups] = React.useState({ hiragana: [], katakana: [] });
   const [selectedVocabGroups, setSelectedVocabGroups] = React.useState([]);
   const [selectedKanjiGroups, setSelectedKanjiGroups] = React.useState([]);
+
+  // Track study time in minutes (every 60s while in a study mode)
+  const appStateRef = React.useRef(appState);
+  React.useEffect(() => { appStateRef.current = appState; }, [appState]);
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const studyStates = ['quiz','timeattack','survival','fill','matchgame','writing','confusable'];
+      if(studyStates.includes(appStateRef.current)) {
+        const today = new Date().toISOString().slice(0,10);
+        setSettings(prev => {
+          const sm = {...(prev.studyMinutes||{})};
+          sm[today] = (sm[today]||0) + 1;
+          return {...prev, studyMinutes: sm};
+        });
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const activeKanaList = React.useMemo(() => {
     if(studyMode==='vocab') return vocabData.filter(k => selectedVocabGroups.includes(k.groupId));
@@ -1828,6 +1976,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const taInputRef = React.useRef('');
   const taStatusRef = React.useRef('idle');
   const taScoreRef = React.useRef(0);
+  const [taMcOptions, setTaMcOptions] = React.useState([]);
 
   // SURVIVAL STATE
   const [svLives, setSvLives] = React.useState(3);
@@ -1844,6 +1993,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const svStatusRef = React.useRef('idle');
   const svStreakRef = React.useRef(0);
   const svLivesRef = React.useRef(3);
+  const [svMcOptions, setSvMcOptions] = React.useState([]);
 
   // ===== FIRESTORE CLOUD SYNC =====
   const [cloudLoaded, setCloudLoaded] = React.useState(isGuest);
@@ -2019,7 +2169,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setTaScore(0); taScoreRef.current=0; setTaTimeLeft(60); setTaRunning(true); setTaFinished(false);
     setTaInputValue(''); taInputRef.current=''; setTaStatus('idle'); taStatusRef.current='idle';
     setTaCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('timeattack');
-    setTaPreStart(3); // Set pre-start countdown
+    setTaPreStart('setup'); // Show setup screen first
   };
   const startFillAll = () => {
     if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
@@ -2198,7 +2348,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           speakKana(kana.question,settings.isSound);
           setTimeout(()=>{
             setTaInputValue('');taInputRef.current='';
-            setTaCurrentIdx(genWeightedNext(activeKanaList,taCurrentIdx));
+            const taNextI = genWeightedNext(activeKanaList,taCurrentIdx); setTaCurrentIdx(taNextI); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[taNextI], activeKanaList));
             setTaStatus('idle');taStatusRef.current='idle';
           },200);
         }
@@ -2237,7 +2387,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         setTimeout(()=>{
           setSvStatus('idle');svStatusRef.current='idle';
           setSvInputValue('');svInputRef.current='';
-          setSvCurrentIdx(genWeightedNext(activeKanaList,svCurrentIdx));
+          const svNextT = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextT); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextT], activeKanaList));
           setSvTimeLeft(5);
         }, 1000);
       }
@@ -2290,7 +2440,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           speakKana(kana.question,settings.isSound);
           setTimeout(()=>{
             setSvInputValue('');svInputRef.current='';
-            setSvCurrentIdx(genWeightedNext(activeKanaList,svCurrentIdx));
+            const svNextI = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextI); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextI], activeKanaList));
             setSvStatus('idle');svStatusRef.current='idle';
             setSvTimeLeft(5);
           },200);
@@ -2393,6 +2543,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const backToMenu = () => { setAppState('menu'); setSmartReviewPool(null); if('speechSynthesis' in window) window.speechSynthesis.cancel(); };
 
   const handleSidebarSubSelect = (sub) => {
+    if (sub.goHome) { setAppState('menu'); setMainSection('learning'); return; }
     if (sub.mode) setStudyMode(sub.mode);
     if (sub.alphabet) setSelectedAlphabet(sub.alphabet);
     setAppState('menu');
@@ -2405,7 +2556,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if (mainSection === 'roadmap') {
     return (
       <>
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
         <RoadmapScreen toggleSidebar={()=>setSidebarOpen(true)} kanaData={kanaData} vocabData={vocabData} kanjiData={kanjiData} />
       </>
     );
@@ -2414,7 +2565,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if (mainSection === 'materials') {
     return (
       <>
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
         <MaterialsScreen toggleSidebar={()=>setSidebarOpen(true)} />
       </>
     );
@@ -2424,7 +2575,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if(appState==='menu') {
     return (
       <div className="min-h-screen flex flex-col items-center px-4 py-8 relative">
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout} onShowTutorial={onShowTutorial} />
         
         {/* Toggle Hamburger & App Title GEMINI STYLE (Top Left) */}
@@ -2432,16 +2583,17 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-gray-400 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 bg-gray-100 dark:bg-gray-800/80 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all focus:outline-none">
              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
            </button>
-           <h1 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none">
+           <h1 className="text-sm min-[380px]:text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-teal-400 drop-shadow-sm flex items-center gap-2.5 tracking-tight select-none cursor-pointer" onClick={() => { setAppState('menu'); setMainSection('learning'); setSidebarOpen(false); }}>
              chơn trunk kúc
            </h1>
         </div>
 
-        {/* Study Mode Toggles (Kana/Vocab/Kanji) */}
-        <div className="flex w-full max-w-5xl gap-1 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl mb-6 mt-[72px] sm:mt-[76px] shadow-inner">
-          {[['kana','tabKana'],['vocab','tabVocab'],['kanji','tabKanji']].map(([m,k])=>(
-            <button key={m} onClick={()=>setStudyMode(m)} className={`flex-1 py-3 rounded-lg font-bold text-sm sm:text-base transition-all ${studyMode===m?'bg-white dark:bg-gray-700 text-[#3182ce] dark:text-blue-300 shadow-sm':'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}>{t[k]}</button>
-          ))}
+        {/* Active study mode label (selected from sidebar) */}
+        <div className="mt-[72px] sm:mt-[76px] mb-6 flex items-center gap-2">
+          <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm border ${studyMode==='kana'?'bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800':studyMode==='vocab'?'bg-cyan-50 text-cyan-600 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800':'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800'}`}>
+            {studyMode==='kana'?'あ Bảng Chữ Cái':studyMode==='vocab'?'📝 Từ Vựng':'漢 Kanji'}
+          </span>
+          <button onClick={() => setSidebarOpen(true)} className="text-xs text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors font-semibold underline underline-offset-2">Đổi</button>
         </div>
         {studyMode==='kana' && (<>
           <div className="flex w-full max-w-5xl gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
@@ -2783,6 +2935,27 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
               <button onClick={backToMenu} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl px-8 py-3 font-bold text-base shadow-lg active:scale-95 transition-all">{t.menu}</button>
             </div>
           </div>
+        ) : taPreStart === 'setup' ? (
+          <div className="flex flex-col items-center bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl max-w-sm w-full border border-gray-100 dark:border-gray-700 pop-in z-20">
+             <div className="text-4xl mb-4">⏱️</div>
+             <h2 className="text-2xl font-black text-orange-500 mb-6 text-center">60 Giây</h2>
+             <p className="text-sm text-gray-500 text-center mb-6">Gõ đáp án nhanh nhất có thể trong 60 giây! Chọn hình thức trả lời.</p>
+             
+             <div className="w-full mb-6">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">Hình thức</div>
+                <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl w-full">
+                   <button onClick={() => setSettings(p=>({...p, taQuizType: 'typing'}))} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${(settings.taQuizType||'typing')==='typing'?'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>✍️ Gõ phím</button>
+                   <button onClick={() => setSettings(p=>({...p, taQuizType: 'mc'}))} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${settings.taQuizType==='mc'?'bg-white dark:bg-gray-600 text-orange-600 dark:text-orange-400 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>🎯 Trắc nghiệm</button>
+                </div>
+             </div>
+             
+             <button onClick={()=>{setTaPreStart(3); const idx0=Math.floor(Math.random()*activeKanaList.length); setTaCurrentIdx(idx0); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[idx0], activeKanaList));}} className="w-full bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
+          </div>
+        ) : taPreStart > 0 ? (
+          <div className="flex flex-col items-center justify-center pt-20">
+            <div className="text-8xl font-black text-orange-500 pop-in animate-pulse">{taPreStart}</div>
+            <div className="text-xl font-bold text-gray-500 mt-4">Sẵn sàng!</div>
+          </div>
         ) : taKana ? (
           <div className="w-full max-w-[320px] flex flex-col items-center mt-16 sm:mt-12">
             <div className="flex items-center justify-between w-full mb-4 px-2">
@@ -2792,12 +2965,40 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
             <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex items-center justify-center mb-6 sm:mb-10 transition-all ${taCard} ${taStatus==='correct'?'scale-[1.03]':''}`}>
               <span className="text-[140px] sm:text-[160px] leading-none text-gray-800 dark:text-gray-50 kana-text font-bold select-none drop-shadow-sm">{taKana.question}</span>
             </div>
+            {(settings.taQuizType==='mc') ? (
+              <div className="flex flex-col gap-2 w-full px-2 sm:px-0">
+                {taMcOptions.length > 0 ? taMcOptions.map((opt, oi) => (
+                  <button key={oi} onClick={() => {
+                    if(taStatusRef.current !== 'idle') return;
+                    const kana = activeKanaList[taCurrentIdx]; if(!kana) return;
+                    if(opt.id === kana.id) {
+                      setTaStatus('correct'); taStatusRef.current='correct';
+                      setTaScore(p=>{const ns=p+1;taScoreRef.current=ns;return ns;});
+                      if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+                      speakKana(kana.question,settings.isSound);
+                      setTimeout(()=>{
+                        setTaInputValue('');taInputRef.current='';
+                        const taNextIdx = genWeightedNext(activeKanaList,taCurrentIdx); setTaCurrentIdx(taNextIdx); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[taNextIdx], activeKanaList));
+                        setTaStatus('idle');taStatusRef.current='idle';
+                      },200);
+                    } else {
+                      setTaStatus('error'); taStatusRef.current='error';
+                      setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+                      setTimeout(()=>{setTaStatus('idle');taStatusRef.current='idle';},300);
+                    }
+                  }} className={`w-full bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 py-3 px-4 rounded-xl shadow-sm text-center text-lg sm:text-xl font-bold hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-[#3182ce] hover:text-[#3182ce] dark:hover:text-blue-400 active:scale-95 transition-all`}>
+                    {Array.isArray(opt.answer) ? opt.answer[0] : opt.answer}
+                  </button>
+                )) : null}
+              </div>
+            ) : (
             <div className={`w-full relative ${taAnim} px-2 sm:px-0`}>
               <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${taBorder} ${taTxt}`}>
                 {taInputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.typefast}</span>}
               </div>
             </div>
-          </div>
+            )}
+            </div>
         ) : null}
       </div>
     );
@@ -2841,7 +3042,14 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 <button onClick={() => setSettings(p=>({...p, survivalTimer: 15}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===15?'border-rose-500 bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>15 Giây</button>
                 <button onClick={() => setSettings(p=>({...p, survivalTimer: 0}))} className={`py-3 rounded-xl font-bold border-2 transition-all ${settings.survivalTimer===0?'border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400':'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}`}>♾ Vô hạn</button>
              </div>
-             <button onClick={()=>startSurvival(true)} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
+             <div className="w-full mb-6">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">Hình thức trả lời</div>
+                <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl w-full">
+                   <button onClick={() => setSettings(p=>({...p, svQuizType: 'typing'}))} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${(settings.svQuizType||'typing')==='typing'?'bg-white dark:bg-gray-600 text-rose-600 dark:text-rose-400 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>✍️ Gõ phím</button>
+                   <button onClick={() => setSettings(p=>({...p, svQuizType: 'mc'}))} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${settings.svQuizType==='mc'?'bg-white dark:bg-gray-600 text-rose-600 dark:text-rose-400 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>🎯 Trắc nghiệm</button>
+                </div>
+             </div>
+             <button onClick={()=>{const svIdx0=Math.floor(Math.random()*activeKanaList.length); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svIdx0], activeKanaList)); startSurvival(true);}} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
           </div>
         ) : svPreStart > 0 ? (
           <div className="flex flex-col items-center justify-center pt-20">
@@ -2876,12 +3084,58 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                  </span>
               )}
             </div>
+            {(settings.svQuizType==='mc') ? (
+              <div className="flex flex-col gap-2 w-full px-2 sm:px-0">
+                {svMcOptions.length > 0 ? svMcOptions.map((opt, oi) => (
+                  <button key={oi} onClick={() => {
+                    if(svStatusRef.current !== 'idle') return;
+                    const kana = activeKanaList[svCurrentIdx]; if(!kana) return;
+                    if(opt.id === kana.id) {
+                      setSvStatus('correct'); svStatusRef.current='correct';
+                      setSvStreak(p=>{const ns=p+1;svStreakRef.current=ns;return ns;});
+                      if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+                      speakKana(kana.question,settings.isSound);
+                      setTimeout(()=>{
+                        setSvInputValue('');svInputRef.current='';
+                        const svNextIdx = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextIdx); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextIdx], activeKanaList));
+                        setSvStatus('idle');svStatusRef.current='idle';
+                        setSvTimeLeft(settings.survivalTimer || 5);
+                      },200);
+                    } else {
+                      setSvStatus('error'); svStatusRef.current='error';
+                      setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+                      speakKana(kana.question,settings.isSound);
+                      const newLives = svLivesRef.current - 1;
+                      setSvLives(newLives); svLivesRef.current = newLives;
+                      if(newLives <= 0) {
+                        setTimeout(() => {
+                          setSvRunning(false); setSvFinished(true);
+                          const score = svStreakRef.current;
+                          if (score > svHighScore) {
+                             setSvHighScore(score);
+                             localStorage.setItem(SURVIVAL_HIGHSCORE_KEY, score.toString());
+                             setShowConfetti(true); setTimeout(()=>setShowConfetti(false),4000); 
+                          }
+                        }, 600);
+                      } else {
+                        setTimeout(()=>{setSvStatus('idle');svStatusRef.current='idle';setSvInputValue('');svInputRef.current='';setSvTimeLeft(settings.survivalTimer || 5);
+                          const svNextIdx2 = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextIdx2); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextIdx2], activeKanaList));
+                        },500);
+                      }
+                    }
+                  }} className={`w-full bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 py-3 px-4 rounded-xl shadow-sm text-center text-lg sm:text-xl font-bold hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-rose-500 hover:text-rose-500 dark:hover:text-rose-400 active:scale-95 transition-all`}>
+                    {Array.isArray(opt.answer) ? opt.answer[0] : opt.answer}
+                  </button>
+                )) : null}
+              </div>
+            ) : (
             <div className={`w-full relative ${svAnim} px-2 sm:px-0`}>
               <div className={`w-full px-6 py-4 sm:py-5 text-center text-[22px] sm:text-4xl font-semibold border-2 rounded-2xl sm:rounded-3xl transition-all min-h-[66px] sm:min-h-[78px] flex items-center justify-center select-none cursor-text ${svBorder} ${svTxt}`}>
                 {svInputValue||<span className="font-normal text-gray-300 dark:text-gray-500">{t.typefast}</span>}
               </div>
             </div>
-          </div>
+            )}
+            </div>
         ) : null}
       </div>
     );
@@ -3205,13 +3459,7 @@ function LoginApp({ onLogin, onGuest, onNameUpdate }) {
 }
 
 function TutorialPopup({ onClose, userKey }) {
-  const [dontShow, setDontShow] = React.useState(false);
-  const handleClose = () => {
-    if (dontShow) {
-      localStorage.setItem(`kana_tutorial_hidden_${userKey}`, 'true');
-    }
-    onClose();
-  };
+  const handleClose = () => onClose();
   return (
     <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4" onClick={handleClose}>
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 pop-in border border-gray-100 dark:border-gray-700" onClick={e=>e.stopPropagation()}>
@@ -3248,11 +3496,6 @@ function TutorialPopup({ onClose, userKey }) {
         <div className="mt-5 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
           <p className="text-xs text-yellow-700 dark:text-yellow-300 font-semibold">💡 Mẹo: Chọn bảng chữ cái (Hiragana/Katakana) hoặc tab Từ Vựng/Kanji ở trên, rồi tick chọn các nhóm muốn học trước khi bắt đầu!</p>
         </div>
-
-        <label className="flex items-center gap-2 mt-5 cursor-pointer select-none">
-          <input type="checkbox" checked={dontShow} onChange={e=>setDontShow(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-[#3182ce] focus:ring-[#3182ce] cursor-pointer" />
-          <span className="text-sm text-gray-500 dark:text-gray-400">Không hiển thị lại cho lần sau</span>
-        </label>
 
         <button onClick={handleClose} className="w-full mt-4 bg-[#3182ce] text-white py-3.5 rounded-xl font-bold text-lg hover:bg-[#2b6cb0] active:scale-95 transition-all shadow-lg shadow-blue-500/30">
           Bắt Đầu Học Ngay! 🚀
