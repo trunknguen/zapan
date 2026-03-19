@@ -248,7 +248,7 @@ const ALL_KANJI = { ...KANJI_N5, ...KANJI_N4 };
 
 const VOCAB_CATS = Object.keys(ALL_VOCAB);
 const KANJI_CATS = Object.keys(ALL_KANJI);
-const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0, corrects: 0 };
+const SRS_DEFAULT = { interval: 0, ease: 2.5, nextReview: 0, corrects: 0, avgTime: 0, totalAnswers: 0, lastAnswerTime: 0 };
 const genVocabList = () => { const l=[]; VOCAB_CATS.forEach(c=>{const g=ALL_VOCAB[c];g.items.forEach(i=>l.push({id:`v_${i.q}`,type:'vocab',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const genKanjiList = () => { const l=[]; KANJI_CATS.forEach(c=>{const g=ALL_KANJI[c];g.items.forEach(i=>l.push({id:`k_${i.q}`,type:'kanji',groupId:g.id,question:i.q,answer:i.a,meaning:i.m,hv:i.hv||'',hint:i.hint||'',mistakeCount:0,...SRS_DEFAULT}));}); return l; };
 const defaultVocabData = genVocabList();
@@ -267,24 +267,36 @@ const generateKanaList = () => {
 };
 const defaultKanaData = generateKanaList();
 
-// SRS Engine (SM-2 inspired)
-const srsUpdate = (card, isCorrect) => {
+// SRS Engine (SM-2 inspired) with Adaptive Time penalty
+const srsUpdate = (card, isCorrect, responseTimeMs = 0) => {
   const now = Date.now();
-  let { interval, ease, nextReview, corrects } = card;
-  interval = interval || 0; ease = ease || 2.5; nextReview = nextReview || 0; corrects = corrects || 0;
+  let { interval, ease, nextReview, corrects, avgTime, totalAnswers } = card;
+  interval = interval || 0; ease = ease || 2.5; nextReview = nextReview || 0; 
+  corrects = corrects || 0; avgTime = avgTime || 0; totalAnswers = totalAnswers || 0;
+  
+  totalAnswers += 1;
+  if (responseTimeMs > 0) {
+    avgTime = avgTime > 0 ? Math.round(avgTime * 0.7 + responseTimeMs * 0.3) : responseTimeMs;
+  }
+  
+  const FAST = 2000, SLOW = 5000;
+  const speedFactor = responseTimeMs <= FAST ? 1.15 : responseTimeMs >= SLOW ? 0.85 : 1.0;
+
   if (isCorrect) {
     if (interval === 0) interval = 1;        // 1 minute
     else if (interval === 1) interval = 10;  // 10 minutes
     else if (interval < 60) interval = 60;   // 1 hour
     else if (interval < 1440) interval = 1440; // 1 day
     else interval = Math.round(interval * Math.min(ease, 4));
-    ease = Math.max(1.3, ease + 0.1);
+    
+    interval = Math.round(interval * speedFactor);
+    ease = Math.max(1.3, ease + (speedFactor >= 1.15 ? 0.15 : 0.1));
     corrects += 1;
   } else {
     interval = 1; // reset to 1 minute
     ease = Math.max(1.3, ease - 0.2);
   }
-  return { ...card, interval, ease, nextReview: now + interval * 60000, corrects };
+  return { ...card, interval, ease, nextReview: now + interval * 60000, corrects, avgTime, totalAnswers, lastAnswerTime: responseTimeMs };
 };
 const isDue = (card) => !card.nextReview || Date.now() >= card.nextReview;
 
@@ -592,6 +604,15 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
           >
             <span className="text-xl w-6 text-center">🗺️</span>
             <span>Lộ Trình Học</span>
+          </button>
+          
+          {/* Kết Quả Học Tập */}
+          <button 
+            onClick={() => { if(onSubSelect) onSubSelect({goToStats:true}); handleClose(); }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'stats' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+          >
+            <span className="text-xl w-6 text-center">📊</span>
+            <span>Kết Quả Học Tập</span>
           </button>
         </div>
         
@@ -1476,16 +1497,12 @@ function N5KanjiView() {
                     <span className="text-[10px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest mt-1">Bấm để lật</span>
                   </div>
                   {/* Back */}
-                  <div className="flip-card-back bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center p-3 shadow-lg shadow-purple-500/20 relative">
-                    <span className="text-2xl sm:text-3xl font-black kana-text text-white/90 mb-1">{item.q}</span>
-                    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 mb-1">
-                      {item.on && <span className="text-[10px] font-bold text-purple-200">On: {item.on}</span>}
-                      {item.kun && <span className="text-[10px] font-bold text-purple-200">Kun: {item.kun}</span>}
-                    </div>
-                    {item.hv && <span className="text-xs font-black text-yellow-300 mb-0.5">HV: {item.hv}</span>}
-                    <div className="w-8 h-px bg-white/30 my-1"></div>
-                    <span className="text-xs font-bold text-white text-center leading-tight px-1">{item.m?.vi || ''}</span>
-                    {item.hint && <span className="text-[9px] text-purple-200 text-center leading-tight mt-1 px-2 line-clamp-2">{item.hint}</span>}
+                  <div className="flip-card-back bg-gradient-to-br from-purple-500 to-indigo-600 flex flex-col items-center justify-center p-4 shadow-lg shadow-purple-500/20 relative">
+                    <span className="text-3xl sm:text-4xl font-black kana-text text-white mb-2">{item.q}</span>
+                    <div className="w-10 h-px bg-white/30 mb-2"></div>
+                    <span className="text-base sm:text-lg font-bold text-white text-center leading-tight">{Array.isArray(item.a) ? item.a.join(' / ') : item.a}</span>
+                    {item.hv && <span className="text-sm font-black text-yellow-300 mt-1.5">HV: {item.hv}</span>}
+                    <span className="text-sm font-bold text-white/80 text-center mt-1">{item.m?.vi || ''}</span>
                     <button onClick={(e) => speak(item.q, e)} className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors active:scale-90" title="Nghe phát âm">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
                     </button>
@@ -2289,6 +2306,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const [selectedGroups, setSelectedGroups] = React.useState({ hiragana: [], katakana: [] });
   const [selectedVocabGroups, setSelectedVocabGroups] = React.useState([]);
   const [selectedKanjiGroups, setSelectedKanjiGroups] = React.useState([]);
+  const [showGames, setShowGames] = React.useState(false);
 
   // Track study time in minutes (every 60s while in a study mode)
   const appStateRef = React.useRef(appState);
@@ -2325,9 +2343,15 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   // SMART REVIEW: find items that need reviewing
   const getSmartReviewItems = () => {
     const allItems = [...kanaData, ...vocabData, ...kanjiData];
-    return allItems.filter(item => item.mistakeCount > 0 || (item.corrects||0) < 3)
-      .sort((a,b) => (b.mistakeCount||0) - (a.mistakeCount||0))
-      .slice(0, 20);
+    return allItems.filter(item => 
+      item.mistakeCount > 0 || (item.corrects||0) < 3 || (item.avgTime||0) > 5000
+    )
+    .sort((a,b) => {
+      const scoreA = (a.mistakeCount||0)*3 + ((a.avgTime||0) > 5000 ? 2 : 0);
+      const scoreB = (b.mistakeCount||0)*3 + ((b.avgTime||0) > 5000 ? 2 : 0);
+      return scoreB - scoreA;
+    })
+    .slice(0, 20);
   };
 
   // CONFUSABLE PAIRS DATA
@@ -2365,6 +2389,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const inputRef = React.useRef('');
   const statusRef = React.useRef('idle');
   const currentKanaRef = React.useRef(null);
+  const questionStartTimeRef = React.useRef(Date.now());
 
   // CONFUSABLE PAIRS STATE
   const [cfPairIdx, setCfPairIdx] = React.useState(0);
@@ -2389,6 +2414,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const taInputRef = React.useRef('');
   const taStatusRef = React.useRef('idle');
   const taScoreRef = React.useRef(0);
+  const taQuestionStartTimeRef = React.useRef(Date.now());
   const [taMcOptions, setTaMcOptions] = React.useState([]);
 
   // SURVIVAL STATE
@@ -2400,6 +2426,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const [svInputValue, setSvInputValue] = React.useState('');
   const [svStatus, setSvStatus] = React.useState('idle');
   const [svCurrentIdx, setSvCurrentIdx] = React.useState(0);
+  const svQuestionStartTimeRef = React.useRef(Date.now());
   const [svPreStart, setSvPreStart] = React.useState(0); // Added
   const [svTimeLeft, setSvTimeLeft] = React.useState(5); // Added
   const svInputRef = React.useRef('');
@@ -2514,11 +2541,21 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const genWeightedNext = (pool, curIdx) => {
     if(!pool||pool.length===0) return 0;
     if(pool.length===1) return 0;
+    
+    // Weight calculation helper:
+    const getWeight = (k) => {
+      let w = 1 + (k.mistakeCount||0) * 3;
+      const avg = k.avgTime || 0;
+      if (avg > 5000) w += 3;
+      else if (avg > 3000) w += 1.5;
+      if ((k.totalAnswers||0) === 0) w += 1;
+      return w;
+    };
+
     // SRS: prioritize due items first
     const dueItems = pool.map((k,i) => ({k,i})).filter(x => isDue(x.k));
     if (dueItems.length > 0) {
-      // Pick from due items with mistake weighting
-      const weights = dueItems.map(x => 1 + (x.k.mistakeCount||0) * 3);
+      const weights = dueItems.map(x => getWeight(x.k));
       const total = weights.reduce((a,b)=>a+b,0);
       let attempts = 0;
       while(attempts < 20) {
@@ -2530,7 +2567,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       return pick.i;
     }
     // Fallback: normal weighted random
-    const weights = pool.map(k => 1 + (k.mistakeCount||0) * 3);
+    const weights = pool.map(k => getWeight(k));
     const total = weights.reduce((a,b) => a+b, 0);
     let attempts = 0;
     while(attempts < 20) {
@@ -2575,6 +2612,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle'); setDrawingChecked(false); clearCanvas();
     const nextIdx = genWeightedNext(activeKanaList, -1);
     setCurrentIndex(nextIdx); setAppState('quiz');
+    questionStartTimeRef.current = Date.now();
     if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(activeKanaList[nextIdx] || activeKanaList[0], activeKanaList));
   };
   const startTimeAttack = () => {
@@ -2582,6 +2620,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setTaScore(0); taScoreRef.current=0; setTaTimeLeft(60); setTaRunning(true); setTaFinished(false);
     setTaInputValue(''); taInputRef.current=''; setTaStatus('idle'); taStatusRef.current='idle';
     setTaCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false); setAppState('timeattack');
+    taQuestionStartTimeRef.current = Date.now();
     setTaPreStart('setup'); // Show setup screen first
   };
   const startFillAll = () => {
@@ -2592,18 +2631,13 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   const startSurvival = (forceSettings = false) => {
     if(activeKanaList.length===0){alert("Hãy chọn ít nhất một hàng Kana!");return;}
     if(!settings.survivalTimer) setSettings(p=>({...p, survivalTimer: 5}));
-    // If not started yet, show timer setup screen
-    setSvLives(3); svLivesRef.current=3; setSvStreak(0); svStreakRef.current=0;
-    setSvRunning(true); setSvFinished(false); setSvInputValue(''); svInputRef.current='';
-    setSvStatus('idle'); svStatusRef.current='idle';
+    setSvLives(settings.survivalTimer>0?3:999); svLivesRef.current=settings.survivalTimer>0?3:999;
+    setSvStreak(0); svStreakRef.current=0; setSvRunning(true); setSvFinished(false);
+    setSvInputValue(''); svInputRef.current=''; setSvStatus('idle'); svStatusRef.current='idle';
     setSvCurrentIdx(Math.floor(Math.random()*activeKanaList.length)); setShowConfetti(false);
-    setAppState('survival');
-    if(forceSettings !== true) {
-       setSvPreStart('setup');
-    } else {
-       setSvPreStart(3);
-       setSvTimeLeft(settings.survivalTimer || 5);
-    }
+    svQuestionStartTimeRef.current = Date.now();
+    if(!forceSettings) { setSvPreStart('setup'); setAppState('survival'); }
+    else { setSvPreStart(3); setSvTimeLeft(settings.survivalTimer || 5); setAppState('survival'); }
   };
   const startMatchGame = () => {
     if(activeKanaList.length<2){alert("Hãy chọn ít nhất 2 mục để chơi Match!");return;}
@@ -2617,6 +2651,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     setCorrectCount(0); setPracticeMode('normal'); setInputValue(''); setStatus('idle'); setDrawingChecked(false);
     const nextIdx = Math.floor(Math.random()*items.length);
     setCurrentIndex(nextIdx); setAppState('quiz');
+    questionStartTimeRef.current = Date.now();
     if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(items[nextIdx] || items[0], items));
   };
 
@@ -2630,10 +2665,11 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   };
 
   const handleCorrectRandom = () => {
+    const responseTime = Date.now() - questionStartTimeRef.current;
     setStatus('correct'); setCorrectCount(p=>p+1); incrementStudyHistory();
     const pool = smartReviewPool || activeQuizData;
     if(currentKana){ 
-      const nd=(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true):k);
+      const nd=(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true,responseTime):k);
       setActiveData(()=>nd);
     }
     setTimeout(()=>{ 
@@ -2646,15 +2682,18 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(pool[nextIdx] || pool[0], pool));
       }
       setStatus('idle'); 
+      questionStartTimeRef.current = Date.now();
     },250);
   };
   const handleErrorRandom = () => {
+    const responseTime = Date.now() - questionStartTimeRef.current;
     setStatus('error'); if(currentKana) speakKana(currentKana.question,settings.isSound);
-    if(currentKana){ setActiveData(prev=>(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false):k)); }
+    if(currentKana){ setActiveData(prev=>(studyMode==='kana'?kanaData:studyMode==='vocab'?vocabData:kanjiData).map(k=>k.id===currentKana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false,responseTime):k)); }
     setTimeout(()=>{
        setStatus('idle');setInputValue('');setDrawingChecked(false);clearCanvas();
        // Generate new options on mistake if MC, maybe keeping same options or reshuffling. Reshuffle for now:
        if(settings.quizMode === 'mc') setMultipleChoiceOptions(generateMultipleChoiceOptions(currentKana, activeQuizData));
+       questionStartTimeRef.current = Date.now();
     },400);
   };
 
@@ -2688,8 +2727,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       const t = setTimeout(() => setTaPreStart(p=>p-1), 1000);
       return ()=>clearTimeout(t);
     }
-    if (appState==='timeattack' && taRunning && taPreStart === 0 && !taFinished) {
-      setTimeout(focusMobileInput, 100); // Focus input after countdown
+    if (appState==='timeattack' && taRunning && taPreStart === 0 && !taFinished && (settings.taQuizType||'typing') !== 'mc') {
+      setTimeout(focusMobileInput, 100); // Focus input after countdown (only for typing mode)
     }
   }, [appState, taRunning, taPreStart, taFinished]);
 
@@ -2698,8 +2737,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       const t = setTimeout(() => setSvPreStart(p=>p-1), 1000);
       return ()=>clearTimeout(t);
     }
-    if (appState==='survival' && svRunning && svPreStart === 0 && !svFinished) {
-      setTimeout(focusMobileInput, 100); // Focus input after countdown
+    if (appState==='survival' && svRunning && svPreStart === 0 && !svFinished && (settings.svQuizType||'typing') !== 'mc') {
+      setTimeout(focusMobileInput, 100); // Focus input after countdown (only for typing mode)
     }
   }, [appState, svRunning, svPreStart, svFinished]);
 
@@ -2744,9 +2783,13 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       if(e.key==='Backspace'){e.preventDefault(); setTaInputValue(p=>{const v=p.slice(0,-1);taInputRef.current=v;return v;}); return;}
       if(e.key==='Enter'){e.preventDefault();
         if(taInputRef.current.length>0&&!checkAns(taInputRef.current,kana)){
+          const responseTime = Date.now() - taQuestionStartTimeRef.current;
           setTaStatus('error'); taStatusRef.current='error';
-          setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
-          setTimeout(()=>{setTaStatus('idle');taStatusRef.current='idle';setTaInputValue('');taInputRef.current='';},300);
+          setActiveData(d=>d.map(k=>k.id===kana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false,responseTime):k));
+          setTimeout(()=>{
+            setTaStatus('idle');taStatusRef.current='idle';setTaInputValue('');taInputRef.current='';
+            taQuestionStartTimeRef.current = Date.now();
+          },300);
         }
         return;
       }
@@ -2755,14 +2798,16 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         const nv=taInputRef.current+e.key.toLowerCase();
         setTaInputValue(nv); taInputRef.current=nv;
         if(checkAns(nv,kana)){
+          const responseTime = Date.now() - taQuestionStartTimeRef.current;
           setTaStatus('correct'); taStatusRef.current='correct';
           setTaScore(p=>{const ns=p+1;taScoreRef.current=ns;return ns;});
-          if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+          setActiveData(d=>d.map(k=>k.id===kana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true,responseTime):k));
           speakKana(kana.question,settings.isSound);
           setTimeout(()=>{
             setTaInputValue('');taInputRef.current='';
             const taNextI = genWeightedNext(activeKanaList,taCurrentIdx); setTaCurrentIdx(taNextI); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[taNextI], activeKanaList));
             setTaStatus('idle');taStatusRef.current='idle';
+            taQuestionStartTimeRef.current = Date.now();
           },200);
         }
       }
@@ -2779,7 +2824,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       setSvStatus('error'); svStatusRef.current='error';
       const kana = activeKanaList[svCurrentIdx];
       if (kana) {
-        setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+        const responseTime = Date.now() - svQuestionStartTimeRef.current;
+        setActiveData(d=>d.map(k=>k.id===kana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false,responseTime):k));
         speakKana(kana.question,settings.isSound);
       }
       
@@ -2801,14 +2847,15 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           setSvStatus('idle');svStatusRef.current='idle';
           setSvInputValue('');svInputRef.current='';
           const svNextT = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextT); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextT], activeKanaList));
-          setSvTimeLeft(5);
+          setSvTimeLeft(settings.survivalTimer || 5);
+          svQuestionStartTimeRef.current = Date.now();
         }, 1000);
       }
       return;
     }
     const t = setTimeout(()=>setSvTimeLeft(p=>p-1),1000);
     return ()=>clearTimeout(t);
-  }, [appState,svRunning,svPreStart,svTimeLeft,svFinished,activeKanaList,svCurrentIdx,settings.isSound]);
+  }, [appState,svRunning,svPreStart,svTimeLeft,svFinished,activeKanaList,svCurrentIdx,settings.isSound,settings.survivalTimer]);
 
   // SURVIVAL KEYDOWN
   React.useEffect(() => {
@@ -2819,8 +2866,9 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
       if(e.key==='Backspace'){e.preventDefault(); setSvInputValue(p=>{const v=p.slice(0,-1);svInputRef.current=v;return v;}); return;}
       if(e.key==='Enter'){e.preventDefault();
         if(svInputRef.current.length>0&&!checkAns(svInputRef.current,kana)){
+          const responseTime = Date.now() - svQuestionStartTimeRef.current;
           setSvStatus('error'); svStatusRef.current='error';
-          setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:k.mistakeCount+1}:k));
+          setActiveData(d=>d.map(k=>k.id===kana.id?srsUpdate({...k,mistakeCount:k.mistakeCount+1},false,responseTime):k));
           speakKana(kana.question,settings.isSound);
           
           const newLives = svLivesRef.current - 1;
@@ -2837,7 +2885,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
               }
             }, 600);
           } else {
-            setTimeout(()=>{setSvStatus('idle');svStatusRef.current='idle';setSvInputValue('');svInputRef.current='';setSvTimeLeft(5);},500);
+            setTimeout(()=>{setSvStatus('idle');svStatusRef.current='idle';setSvInputValue('');svInputRef.current='';setSvTimeLeft(settings.survivalTimer||5);svQuestionStartTimeRef.current = Date.now();},500);
           }
         }
         return;
@@ -2847,22 +2895,24 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         const nv=svInputRef.current+e.key.toLowerCase();
         setSvInputValue(nv); svInputRef.current=nv;
         if(checkAns(nv,kana)){
+          const responseTime = Date.now() - svQuestionStartTimeRef.current;
           setSvStatus('correct'); svStatusRef.current='correct';
           setSvStreak(p=>{const ns=p+1;svStreakRef.current=ns;return ns;});
-          if(kana.mistakeCount>0) setActiveData(d=>d.map(k=>k.id===kana.id?{...k,mistakeCount:Math.max(0,k.mistakeCount-1)}:k));
+          setActiveData(d=>d.map(k=>k.id===kana.id?srsUpdate({...k,mistakeCount:Math.max(0,k.mistakeCount-1)},true,responseTime):k));
           speakKana(kana.question,settings.isSound);
           setTimeout(()=>{
             setSvInputValue('');svInputRef.current='';
             const svNextI = genWeightedNext(activeKanaList,svCurrentIdx); setSvCurrentIdx(svNextI); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svNextI], activeKanaList));
             setSvStatus('idle');svStatusRef.current='idle';
-            setSvTimeLeft(5);
+            setSvTimeLeft(settings.survivalTimer||5);
+            svQuestionStartTimeRef.current = Date.now();
           },200);
         }
       }
     };
     document.addEventListener('keydown',handler,true);
     return ()=>document.removeEventListener('keydown',handler,true);
-  },[appState,svRunning,activeKanaList,svCurrentIdx,settings.isSound,svHighScore,svPreStart]);
+  },[appState,svRunning,activeKanaList,svCurrentIdx,settings.isSound,svHighScore,svPreStart,settings.survivalTimer]);
 
   // HIDDEN INPUT FOR MOBILE KEYBOARD
   const mobileInputRef = React.useRef(null);
@@ -2957,6 +3007,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
 
   const handleSidebarSubSelect = (sub) => {
     if (sub.goHome) { setAppState('menu'); setMainSection('learning'); return; }
+    if (sub.goToStats) { setAppState('stats'); setMainSection('learning'); return; }
     if (sub.mode) setStudyMode(sub.mode);
     if (sub.alphabet) setSelectedAlphabet(sub.alphabet);
     if (sub.tab) setMaterialsTab(sub.tab);
@@ -3011,8 +3062,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         </div>
         {studyMode==='kana' && (<>
           <div className="flex w-full max-w-5xl gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl">
-            <SelectButton isSelected={selectedAlphabet==='hiragana'} onClick={()=>setSelectedAlphabet('hiragana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Hiragana (ひらがな)</SelectButton>
-            <SelectButton isSelected={selectedAlphabet==='katakana'} onClick={()=>setSelectedAlphabet('katakana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Katakana (カタカナ)</SelectButton>
+            <SelectButton isSelected={selectedAlphabet==='hiragana'} onClick={() => setSelectedAlphabet('hiragana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Hiragana (ひらがな)</SelectButton>
+            <SelectButton isSelected={selectedAlphabet==='katakana'} onClick={() => setSelectedAlphabet('katakana')} className="flex-1 !border-none !rounded-lg !py-3 !text-base sm:!text-lg !m-0">Katakana (カタカナ)</SelectButton>
           </div>
           <div className="w-full max-w-5xl mt-6 pb-6 border-b border-gray-200 dark:border-gray-800">
             <SelectButton isSelected={isAllSelected()} onClick={toggleAllKana} className="w-full !m-0 !py-3 !text-lg !border-gray-300 dark:!border-gray-600">{t.selectAll}</SelectButton>
@@ -3045,33 +3096,34 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
             </div>
           </div>
         )}
-        <div className="w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-3 mt-10 sm:mt-12 px-2">
+        <div className="w-full max-w-2xl grid grid-cols-2 gap-3 mt-10 sm:mt-12 px-2">
           <button onClick={startRandomQuiz} className="bg-[#3182ce] text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#127922;</span> <span>{t.random}</span></button>
           <button onClick={startFillAll} className="bg-emerald-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#128221;</span> <span>{t.fillAll}</span></button>
-          <button onClick={startTimeAttack} className="bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-orange-500 hover:to-amber-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#9201;&#65039;</span> <span>{t.timeAttack}</span></button>
-          <button onClick={startSurvival} className="bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#9876;&#65039;</span> <span>{t.survival}</span></button>
         </div>
-        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-2 gap-3">
-           <button onClick={() => {if(activeKanaList.length===0){alert(t.selectMin);return;} setAppState('writing');}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-teal-600 hover:to-emerald-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
-              ✍️ Luyện Viết
-           </button>
-           <button onClick={startMatchGame} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
-              &#127918; Match Game
-           </button>
+        <div className="w-full max-w-2xl px-2 mt-3">
+          <button onClick={() => setShowGames(!showGames)} className={`w-full bg-gradient-to-r from-orange-400 via-rose-500 to-purple-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl active:scale-[0.98] transition-all outline-none text-center flex justify-center items-center gap-3 ${showGames ? 'rounded-b-none shadow-none' : ''}`}>
+            <span className="text-2xl">🎮</span>
+            <span>Trò Chơi</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className={`w-5 h-5 transition-transform duration-200 ${showGames ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+          </button>
+          {showGames && (
+            <div className="bg-gradient-to-b from-purple-600/20 to-indigo-600/10 dark:from-purple-900/40 dark:to-indigo-900/30 border-2 border-t-0 border-purple-300/30 dark:border-purple-700/30 rounded-b-2xl p-3 grid grid-cols-3 gap-3 pop-in">
+              <button onClick={startTimeAttack} className="bg-gradient-to-b from-orange-400 to-amber-500 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-orange-500 hover:to-amber-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#9201;&#65039;</span> <span>{t.timeAttack}</span></button>
+              <button onClick={startSurvival} className="bg-gradient-to-b from-rose-500 to-pink-600 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#9876;&#65039;</span> <span>{t.survival}</span></button>
+              <button onClick={startMatchGame} className="bg-gradient-to-b from-purple-500 to-indigo-500 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#127918;</span> <span>Match</span></button>
+            </div>
+          )}
         </div>
-        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-2 gap-3">
-           <button onClick={startSmartReview} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-amber-600 hover:to-yellow-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2 relative">
-              📋 Ôn Tập
-              {(()=>{ const c = getSmartReviewItems().length; return c > 0 ? <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">{c > 9 ? '9+' : c}</span> : null; })()}
+        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-3 gap-3">
+           <button onClick={() => {if(activeKanaList.length===0){alert(t.selectMin);return;} setAppState('writing');}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-teal-600 hover:to-emerald-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1">
+               <span>✏️</span> <span>Luyện Viết</span>
            </button>
-           <button onClick={startConfusable} className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white rounded-2xl px-3 sm:px-5 py-3.5 font-extrabold text-sm sm:text-base shadow-lg hover:from-pink-600 hover:to-fuchsia-600 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
-              🔀 Cặp Dễ Nhầm
+           <button onClick={startSmartReview} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-amber-600 hover:to-yellow-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1 relative">
+               <span>📋</span> <span>Ôn Tập</span>
+               {(()=>{ const c = getSmartReviewItems().length; return c > 0 ? <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">{c > 9 ? '9+' : c}</span> : null; })()}
            </button>
-        </div>
-        <div className="w-full max-w-xl px-2 mt-3 mb-4">
-           <button onClick={()=>setAppState('stats')} className="w-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-5 py-3.5 font-bold text-base shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50 active:scale-95 transition-all outline-none text-center flex justify-center items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
-              Xem Thống Kê Điểm Yếu
+           <button onClick={startConfusable} className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-pink-600 hover:to-fuchsia-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1">
+               <span>🔀</span> <span>Cặp Dễ Nhầm</span>
            </button>
         </div>
 
@@ -3170,7 +3222,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     else if(status==='error'){iBorder="border-red-500 bg-red-50 dark:bg-red-900/30 text-red-500";tClass="text-red-500 dark:text-red-400";iAnim="animate-shake";cBorder="border-red-300 dark:border-red-700/50";}
     if(!currentKana) return <div className="min-h-screen flex flex-col items-center justify-center font-bold text-gray-500"><div>No Data</div><button onClick={backToMenu} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">Menu</button></div>;
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={(e) => { if (!isDrawingMode && !showVirtualKb) focusMobileInput(e); }}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={(e) => { if (!isDrawingMode && !showVirtualKb && settings.quizMode !== 'mc') focusMobileInput(e); }}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={backToMenu} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
@@ -3187,6 +3239,9 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
         <div className="w-full max-w-[320px] flex flex-col items-center mt-20 sm:mt-16">
           <div className={`w-full aspect-square bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-sm border flex flex-col items-center justify-center mb-6 sm:mb-10 transition-all duration-200 relative ${cBorder} ${status==='correct'?'scale-[1.03] shadow-lg shadow-green-100/50 dark:shadow-none':'hover:scale-[1.01]'}`}>
             {currentKana.mistakeCount>0&&practiceMode==='normal'&&<div className="absolute top-5 right-5 bg-red-100 dark:bg-red-900/50 text-red-500 dark:text-red-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-800">{currentKana.mistakeCount} {t.mistakes}</div>}
+            {status==='correct' && <div className="absolute top-5 right-5 text-sm font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 pop-in bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 border border-green-200 dark:border-green-800">
+               {Date.now() - questionStartTimeRef.current <= 2000 ? '⚡ Nhanh' : Date.now() - questionStartTimeRef.current >= 5000 ? '🐢 Chậm' : '✅ Tốt'}
+            </div>}
             {(!isDrawingMode || drawingChecked) && (
               <button onClick={(e)=>{e.stopPropagation();setShowStrokeOrder(!showStrokeOrder);}} className={`absolute top-4 left-4 p-2 rounded-full transition-colors z-10 ${showStrokeOrder?'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400':'text-gray-400 hover:text-blue-500 bg-gray-50 hover:bg-blue-50 dark:bg-gray-800 dark:hover:bg-gray-700'}`} title={t.strokeOrder}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.132l-2.685.8.8-2.685a4.5 4.5 0 011.132-1.89L16.862 4.487zm0 0L19.5 7.125"/></svg>
@@ -3309,7 +3364,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     if(taStatus==='correct'){taBorder='border-green-500 bg-green-50 dark:bg-green-900/30';taTxt='text-green-600 dark:text-green-400';taCard='border-green-400';}
     else if(taStatus==='error'){taBorder='border-red-500 bg-red-50 dark:bg-red-900/30';taTxt='text-red-500';taAnim='animate-shake';taCard='border-red-300';}
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={() => { if ((settings.taQuizType||'typing') !== 'mc') focusMobileInput(); }}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={()=>{setTaRunning(false);backToMenu();}} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
@@ -3328,8 +3383,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                if (lb.length === 0) return null;
                return (
                  <div className="w-full max-w-sm mt-2 bg-white dark:bg-gray-800/80 rounded-2xl shadow-sm border border-orange-100 dark:border-gray-700 p-4">
-                    <h3 className="text-center font-bold text-orange-500 mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">&#127942; Bảng Xếp Hạng</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-center font-bold text-orange-500 mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">&#127942; Bảng Xếp Hạng</h3
+                    ><div className="space-y-2">
                        {lb.slice(0,5).map((user, i) => (
                           <div key={user.username} className={`flex justify-between items-center p-2 rounded-lg transition-colors ${user.username===currentUser?'bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800/50 font-bold text-orange-600 dark:text-orange-400':'text-gray-600 dark:text-gray-300'}`}>
                              <div className="flex items-center gap-3">
@@ -3363,7 +3418,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                 </div>
              </div>
              
-             <button onClick={()=>{setTaPreStart(3); const idx0=Math.floor(Math.random()*activeKanaList.length); setTaCurrentIdx(idx0); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[idx0], activeKanaList));}} className="w-full bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
+             <button onClick={()=>{setTaPreStart(3); taQuestionStartTimeRef.current = Date.now() + 3000; const idx0=Math.floor(Math.random()*activeKanaList.length); setTaCurrentIdx(idx0); setTaMcOptions(generateMultipleChoiceOptions(activeKanaList[idx0], activeKanaList));}} className="w-full bg-gradient-to-r from-orange-400 to-amber-500 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
           </div>
         ) : taPreStart > 0 ? (
           <div className="flex flex-col items-center justify-center pt-20">
@@ -3426,7 +3481,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
     else if(svStatus==='error'){svBorder='border-red-500 bg-red-50 dark:bg-red-900/30';svTxt='text-red-500';svAnim='animate-shake';svCard='border-red-300';}
     
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={focusMobileInput}>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden" tabIndex={-1} onClick={() => { if ((settings.svQuizType||'typing') !== 'mc') focusMobileInput(); }}>
         <input ref={mobileInputRef} onInput={handleMobileInput} type="text" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck="false" className="absolute opacity-0 w-0 h-0 -z-10" />
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout}/>
         <button onClick={()=>{setSvRunning(false);backToMenu();}} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-800 dark:hover:text-white transition px-4 py-2.5 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-sm z-50 shadow-sm">&#8592; Menu</button>
@@ -3463,7 +3518,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
                    <button onClick={() => setSettings(p=>({...p, svQuizType: 'mc'}))} className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${settings.svQuizType==='mc'?'bg-white dark:bg-gray-600 text-rose-600 dark:text-rose-400 shadow-sm':'text-gray-500 dark:text-gray-400'}`}>🎯 Trắc nghiệm</button>
                 </div>
              </div>
-             <button onClick={()=>{const svIdx0=Math.floor(Math.random()*activeKanaList.length); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svIdx0], activeKanaList)); startSurvival(true);}} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
+             <button onClick={()=>{svQuestionStartTimeRef.current=Date.now()+3000; const svIdx0=Math.floor(Math.random()*activeKanaList.length); setSvMcOptions(generateMultipleChoiceOptions(activeKanaList[svIdx0], activeKanaList)); startSurvival(true);}} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl py-4 font-black shadow-lg hover:shadow-rose-500/30 active:scale-95 transition-all text-lg tracking-wide">BẮT ĐẦU</button>
           </div>
         ) : svPreStart > 0 ? (
           <div className="flex flex-col items-center justify-center pt-20">
