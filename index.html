@@ -338,11 +338,10 @@ const checkAns = (val, kana) => {
 const T = {
   vi: {
     title: 'Kana Quiz', selectTitle: 'Chọn Bảng Chữ',
-    selectAll: 'Chọn Toàn Bộ / Bỏ Chọn',
+    selectAll: 'Chọn Toàn Phân / Bỏ Chọn',
     mainKana: 'Chữ Cơ Bản', dakutenKana: 'Chữ Dakuten', comboKana: 'Chữ Ghép',
     allMain: 'Tất Cả Cơ Bản', allDakuten: 'Tất Cả Dakuten', allCombo: 'Tất Cả Ghép',
-    random: 'Ngẫu Nhiên', fillAll: 'Điền Hết', timeAttack: '60 Giây', survival: 'Sinh Tồn',
-    srsHint: 'Chữ yếu sẽ xuất hiện nhiều hơn',
+    random: 'Ngẫu Nhiên', fillAll: 'Điền Hết', timeAttack: 'Thử Thách Thời Gian', survival: 'Sinh Tồn',
     record: 'Kỷ lục cá nhân',
     menu: 'Menu', back: 'Quay lại',
     romaji: 'Romaji?', typeHere: 'Gõ phím trực tiếp',
@@ -352,51 +351,76 @@ const T = {
     fillTitle: 'Điền Romaji cho các chữ Kana',
     correct: 'Đúng', wrong: 'Sai', strokeOrder: 'Nét chữ',
     total: 'Tổng', ratio: 'Tỷ lệ',
-    tapOrTab: 'Bấm vào thẻ hoặc dùng Tab để chọn • Gõ phím trực tiếp',
+    tapOrTab: 'Bấm thẻ hoặc phím Tab để chọn • Gõ phím trực tiếp',
     finishQuiz: 'Hoàn Thành', retry: 'Làm Lại',
     typefast: 'Gõ nhanh!',
-    scoreIn60: 'điểm trong 60 giây',
+    scoreIn60: 'điểm',
     newRecord: 'Kỷ Lục Mới!',
     highScore: 'Điểm cao nhất',
     playAgain: 'Chơi Lại',
     survivalScore: 'chuỗi đúng liên tiếp',
     survivalOver: 'Game Over!',
     lives: 'Mạng',
-    selectMin: 'Chọn ít nhất 1 hàng Kana!',
+    selectMin: 'Chọn ít nhất 1 mục!',
     noData: 'Không có dữ liệu',
     tabKana: 'Kana', tabVocab: 'Từ Vựng', tabKanji: 'Kanji',
-    vocabTitle: 'Từ Vựng N5', kanjiTitle: 'Kanji N5', meaning: 'Nghĩa',
+    vocabTitle: 'Từ Vựng', kanjiTitle: 'Kanji', meaning: 'Nghĩa',
+    // New Translations
+    features: 'CHỨC NĂNG',
+    learning: 'Học Tập',
+    materials: 'Tài Liệu',
+    roadmap: 'Lộ Trình Học',
+    stats: 'Kết Quả Học Tập',
+    slogan: 'Học tiếng Nhật cùng nhau nào!',
+    games: 'Trò Chơi',
+    writing: 'Luyện Viết',
+    review: 'Ôn Tập',
+    confusable: 'Cặp Dễ Nhầm',
+    alphabet: 'Bảng Chữ Cái',
+    change: 'Đổi'
   },
   en: {
-    title: 'Kana Quiz', selectTitle: 'Select Kana',
+    title: 'Kana Quiz', selectTitle: 'Select Options',
     selectAll: 'Select All / Deselect',
     mainKana: 'Main Kana', dakutenKana: 'Dakuten Kana', comboKana: 'Combo Kana',
     allMain: 'All Main', allDakuten: 'All Dakuten', allCombo: 'All Combo',
-    random: 'Random', fillAll: 'Fill All', timeAttack: '60s Attack', survival: 'Survival',
-    srsHint: 'Weak kana appear more often',
+    random: 'Random', fillAll: 'Fill All', timeAttack: 'Time Challenge', survival: 'Survival',
     record: 'Personal Record',
     menu: 'Menu', back: 'Back',
     romaji: 'Romaji?', typeHere: 'Type directly',
     reviewMistakes: 'Review Mistakes', fixMistakes: 'Fix Mistakes',
     cards: 'Cards', mistakes: 'Mistakes',
     checkNow: 'Instant Check', finishCheck: 'Check on Finish',
-    fillTitle: 'Fill in Romaji for each Kana',
+    fillTitle: 'Fill in Romaji for each item',
     correct: 'Correct', wrong: 'Wrong', strokeOrder: 'Strokes',
     total: 'Total', ratio: 'Accuracy',
-    tapOrTab: 'Tap a card or use Tab to select • Type directly',
+    tapOrTab: 'Tap card or Tab to select • Type directly',
     finishQuiz: 'Finish Quiz', retry: 'Try Again',
     typefast: 'Type fast!',
-    scoreIn60: 'correct in 60 seconds',
+    scoreIn60: 'score',
     newRecord: 'New Record!',
     highScore: 'High Score',
     playAgain: 'Play Again',
     survivalScore: 'max streak',
     survivalOver: 'Game Over!',
     lives: 'Lives',
-    selectMin: 'Select at least 1 Kana row!',
+    selectMin: 'Select at least 1 item!',
     noData: 'No Data',
     tabKana: 'Kana', tabVocab: 'Vocab', tabKanji: 'Kanji',
-    vocabTitle: 'N5 Vocabulary', kanjiTitle: 'N5 Kanji', meaning: 'Meaning',
+    vocabTitle: 'Vocabulary', kanjiTitle: 'Kanji', meaning: 'Meaning',
+    // New Translations
+    features: 'FEATURES',
+    learning: 'Learning',
+    materials: 'Materials',
+    roadmap: 'Study Roadmap',
+    stats: 'Statistics',
+    slogan: "Let's learn Japanese together!",
+    games: 'Games',
+    writing: 'Practice Writing',
+    review: 'Review',
+    confusable: 'Confusables',
+    alphabet: 'Alphabet',
+    change: 'Change'
   }
 };
 
@@ -450,7 +474,7 @@ const SettingsBar = ({settings,toggleSound,toggleTheme,toggleLang,displayName,on
 );
 
 // ===== SIDEBAR COMPONENT =====
-function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect, studyMode }) {
+function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect, studyMode, t }) {
   const [isClosing, setIsClosing] = React.useState(false);
   const [expandedMenu, setExpandedMenu] = React.useState('');
   const [expandedSub, setExpandedSub] = React.useState('');
@@ -533,7 +557,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
         </div>
         
         <div className="flex-1 overflow-y-auto mt-[72px] sm:mt-[76px] py-2 px-3 flex flex-col gap-0.5">
-          <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Chức Năng</div>
+          <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{t.features}</div>
           
           {/* Học Tập - Expandable with 3 sub-groups */}
           <button 
@@ -541,7 +565,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'learning' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
           >
             <span className="text-xl w-6 text-center">📚</span>
-            <span className="flex-1 text-left">Học Tập</span>
+            <span className="flex-1 text-left">{t.learning}</span>
             {chevron(expandedMenu === 'learning')}
           </button>
           
@@ -584,7 +608,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'materials' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
           >
             <span className="text-xl w-6 text-center">📖</span>
-            <span className="flex-1 text-left">Tài Liệu</span>
+            <span className="flex-1 text-left">{t.materials}</span>
             {chevron(expandedMenu === 'materials')}
           </button>
           
@@ -603,7 +627,7 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'roadmap' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
           >
             <span className="text-xl w-6 text-center">🗺️</span>
-            <span>Lộ Trình Học</span>
+            <span>{t.roadmap}</span>
           </button>
           
           {/* Kết Quả Học Tập */}
@@ -612,12 +636,12 @@ function Sidebar({ isOpen, onClose, activeSection, onSelectSection, onSubSelect,
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all text-sm sm:text-base ${activeSection === 'stats' ? 'bg-[#3182ce]/10 text-[#3182ce] dark:bg-blue-900/40 dark:text-blue-400' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'}`}
           >
             <span className="text-xl w-6 text-center">📊</span>
-            <span>Kết Quả Học Tập</span>
+            <span>{t.stats}</span>
           </button>
         </div>
         
         <div className="p-4 text-xs font-semibold text-gray-400 dark:text-gray-600 flex items-center justify-center gap-1.5">
-          <span className="text-base grayscale opacity-50">🇯🇵</span> Học tiếng Nhật cùng nhau nào!
+          <span className="text-base grayscale opacity-50">🇯🇵</span> {t.slogan} • v7.3
         </div>
       </div>
     </div>
@@ -3021,7 +3045,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if (mainSection === 'roadmap') {
     return (
       <>
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} t={t} />
         <RoadmapScreen toggleSidebar={()=>setSidebarOpen(true)} kanaData={kanaData} vocabData={vocabData} kanjiData={kanjiData} />
       </>
     );
@@ -3030,7 +3054,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if (mainSection === 'materials') {
     return (
       <>
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} t={t} />
         <MaterialsScreen activeTab={materialsTab} toggleSidebar={()=>setSidebarOpen(true)} />
       </>
     );
@@ -3040,7 +3064,7 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
   if(appState==='menu') {
     return (
       <div className="min-h-screen flex flex-col items-center px-4 py-8 relative">
-        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} />
+        <Sidebar isOpen={sidebarOpen} onClose={()=>setSidebarOpen(false)} activeSection={mainSection} onSelectSection={setMainSection} onSubSelect={handleSidebarSubSelect} studyMode={studyMode} t={t} />
         <SettingsBar settings={settings} toggleSound={toggleSound} toggleTheme={toggleTheme} toggleLang={toggleLang} displayName={displayName} onLogout={onLogout} onShowTutorial={onShowTutorial} />
         
         {/* Toggle Hamburger & App Title GEMINI STYLE (Top Left) */}
@@ -3097,33 +3121,56 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           </div>
         )}
         <div className="w-full max-w-2xl grid grid-cols-2 gap-3 mt-10 sm:mt-12 px-2">
-          <button onClick={startRandomQuiz} className="bg-[#3182ce] text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#127922;</span> <span>{t.random}</span></button>
-          <button onClick={startFillAll} className="bg-emerald-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-2xl">&#128221;</span> <span>{t.fillAll}</span></button>
+          <button onClick={startRandomQuiz} className="bg-[#3182ce] text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-[#2b6cb0] active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-2 group">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7 sm:w-9 sm:h-9 group-hover:-translate-y-1 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a1.5 1.5 0 01-1.5 1.5H6.94a1.5 1.5 0 00-1.06.44L4.58 7.34C3.84 8.08 4.36 9.3 5.39 9.3h2.15a1.5 1.5 0 011.5 1.5v0c0 .355-.186.676-.401.959-.221.29-.349.634-.349 1.003 0 1.036 1.007 1.875 2.25 1.875s2.25-.84 2.25-1.875c0-.369-.128-.713-.349-1.003-.215-.283-.401-.604-.401-.959v0a1.5 1.5 0 011.5-1.5h2.81a1.5 1.5 0 001.06-.44l1.3-1.3c.74-.74.22-1.96-.81-1.96h-2.15a1.5 1.5 0 01-1.5-1.5z" /></svg>
+            <span>{t.random}</span>
+          </button>
+          <button onClick={startFillAll} className="bg-emerald-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl hover:bg-emerald-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-2 group">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7 sm:w-9 sm:h-9 group-hover:-translate-y-1 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.89 1.132l-2.685.8.8-2.685a4.5 4.5 0 011.132-1.891l8.93-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+            <span>{t.fillAll}</span>
+          </button>
         </div>
         <div className="w-full max-w-2xl px-2 mt-3">
-          <button onClick={() => setShowGames(!showGames)} className={`w-full bg-gradient-to-r from-orange-400 via-rose-500 to-purple-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl active:scale-[0.98] transition-all outline-none text-center flex justify-center items-center gap-3 ${showGames ? 'rounded-b-none shadow-none' : ''}`}>
-            <span className="text-2xl">🎮</span>
-            <span>Trò Chơi</span>
+          <button onClick={() => setShowGames(!showGames)} className={`w-full bg-gradient-to-r from-orange-400 via-rose-500 to-purple-500 text-white rounded-2xl px-5 py-4 font-extrabold text-base sm:text-lg shadow-xl active:scale-[0.98] transition-all outline-none text-center flex justify-center items-center gap-3 group ${showGames ? 'rounded-b-none shadow-none' : ''}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-8 h-8 group-hover:rotate-12 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a1.5 1.5 0 01-1.5 1.5H6.94a1.5 1.5 0 00-1.06.44L4.58 7.34C3.84 8.08 4.36 9.3 5.39 9.3h2.15a1.5 1.5 0 011.5 1.5v0c0 .355-.186.676-.401.959-.221.29-.349.634-.349 1.003 0 1.036 1.007 1.875 2.25 1.875s2.25-.84 2.25-1.875c0-.369-.128-.713-.349-1.003-.215-.283-.401-.604-.401-.959v0a1.5 1.5 0 011.5-1.5h2.81a1.5 1.5 0 001.06-.44l1.3-1.3c.74-.74.22-1.96-.81-1.96h-2.15a1.5 1.5 0 01-1.5-1.5z" /></svg>
+            <span>{t.games}</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className={`w-5 h-5 transition-transform duration-200 ${showGames ? 'rotate-180' : ''}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
           </button>
           {showGames && (
-            <div className="bg-gradient-to-b from-purple-600/20 to-indigo-600/10 dark:from-purple-900/40 dark:to-indigo-900/30 border-2 border-t-0 border-purple-300/30 dark:border-purple-700/30 rounded-b-2xl p-3 grid grid-cols-3 gap-3 pop-in">
-              <button onClick={startTimeAttack} className="bg-gradient-to-b from-orange-400 to-amber-500 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-orange-500 hover:to-amber-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#9201;&#65039;</span> <span>{t.timeAttack}</span></button>
-              <button onClick={startSurvival} className="bg-gradient-to-b from-rose-500 to-pink-600 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#9876;&#65039;</span> <span>{t.survival}</span></button>
-              <button onClick={startMatchGame} className="bg-gradient-to-b from-purple-500 to-indigo-500 text-white rounded-xl px-2 py-3.5 font-extrabold text-sm shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none text-center flex flex-col items-center justify-center gap-1"><span className="text-xl">&#127918;</span> <span>Match</span></button>
+            <div className="bg-gradient-to-b from-purple-600/20 to-indigo-600/10 dark:from-purple-900/40 dark:to-indigo-900/30 border-2 border-t-0 border-purple-300/30 dark:border-purple-700/30 rounded-b-2xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 pop-in">
+              <button className="bg-gradient-to-b from-orange-400 to-amber-500 text-white rounded-xl px-2 py-3 font-extrabold text-sm shadow-lg hover:from-orange-500 hover:to-amber-600 active:scale-95 transition-all outline-none flex flex-col items-center justify-center gap-1 group">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6 sm:w-8 sm:h-8 group-hover:animate-spin"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>{t.timeAttack}</span>
+                <div className="flex gap-1.5 mt-1.5 w-full justify-center">
+                  <span onClick={(e)=>{e.stopPropagation();startTimeAttack(30);}} className="text-[11px] bg-black/10 hover:bg-black/20 p-1 rounded font-bold">30s</span>
+                  <span onClick={(e)=>{e.stopPropagation();startTimeAttack(60);}} className="text-[11px] bg-black/20 hover:bg-black/30 p-1 rounded font-bold ring-1 ring-white">60s</span>
+                  <span onClick={(e)=>{e.stopPropagation();startTimeAttack(120);}} className="text-[11px] bg-black/10 hover:bg-black/20 p-1 rounded font-bold">120s</span>
+                </div>
+              </button>
+              <button onClick={startSurvival} className="bg-gradient-to-b from-rose-500 to-pink-600 text-white rounded-xl px-2 py-3 font-extrabold text-sm shadow-lg hover:from-rose-600 hover:to-pink-700 active:scale-95 transition-all outline-none flex flex-col items-center justify-center gap-2 group">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6 sm:w-8 sm:h-8 group-hover:scale-125 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M11.412 15.655L9.75 21.75l3.745-4.012M9.257 13.5H3.75l2.659-2.849m2.048-2.194L14.25 2.25 12 8.25m0 0l4.5-4.5M18 14.25l-4.5-4.5m1.5 6l4.25 4.25m1.5-1.5l-4.25-4.25" /></svg>
+                <span>{t.survival}</span>
+              </button>
+              <button onClick={startMatchGame} className="bg-gradient-to-b from-purple-500 to-indigo-500 text-white rounded-xl px-2 py-3 font-extrabold text-sm shadow-lg hover:from-purple-600 hover:to-indigo-600 active:scale-95 transition-all outline-none flex flex-col items-center justify-center gap-2 group">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6 sm:w-8 sm:h-8 group-hover:-translate-y-1 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z" /></svg>
+                <span>Match</span>
+              </button>
             </div>
           )}
         </div>
-        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-3 gap-3">
-           <button onClick={() => {if(activeKanaList.length===0){alert(t.selectMin);return;} setAppState('writing');}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-teal-600 hover:to-emerald-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1">
-               <span>✏️</span> <span>Luyện Viết</span>
+        <div className="w-full max-w-2xl px-2 mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+           <button onClick={() => {if(activeKanaList.length===0){alert(t.selectMin);return;} setAppState('writing');}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-2xl px-2 sm:px-4 py-3 sm:py-3.5 font-extrabold text-sm shadow-lg hover:from-teal-600 hover:to-emerald-600 active:scale-95 transition-all outline-none text-center flex items-center sm:flex-col justify-center gap-2 group">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.132l-2.685.8.8-2.685a4.5 4.5 0 011.132-1.89L16.862 4.487zm0 0L19.5 7.125" /></svg>
+               <span>{t.writing}</span>
            </button>
-           <button onClick={startSmartReview} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-amber-600 hover:to-yellow-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1 relative">
-               <span>📋</span> <span>Ôn Tập</span>
+           <button onClick={startSmartReview} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-2xl px-2 sm:px-4 py-3 sm:py-3.5 font-extrabold text-sm shadow-lg hover:from-amber-600 hover:to-yellow-600 active:scale-95 transition-all outline-none text-center flex items-center sm:flex-col justify-center gap-2 group relative">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75" /></svg>
+               <span>{t.review}</span>
                {(()=>{ const c = getSmartReviewItems().length; return c > 0 ? <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md">{c > 9 ? '9+' : c}</span> : null; })()}
            </button>
-           <button onClick={startConfusable} className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white rounded-2xl px-2 sm:px-4 py-3.5 font-extrabold text-xs sm:text-sm shadow-lg hover:from-pink-600 hover:to-fuchsia-600 active:scale-95 transition-all outline-none text-center flex flex-col justify-center items-center gap-1">
-               <span>🔀</span> <span>Cặp Dễ Nhầm</span>
+           <button onClick={startConfusable} className="w-full bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white rounded-2xl px-2 sm:px-4 py-3 sm:py-3.5 font-extrabold text-sm shadow-lg hover:from-pink-600 hover:to-fuchsia-600 active:scale-95 transition-all outline-none text-center flex items-center sm:flex-col justify-center gap-2 group">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+               <span>{t.confusable}</span>
            </button>
         </div>
 
@@ -3206,10 +3253,8 @@ function MainApp({ currentUser, isGuest, onLogout, onShowTutorial, displayName }
           );
         })()}
 
-        <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 text-center relative w-full">
-          {t.srsHint}
-          {taHighScore>0 && <span className="ml-2">&#8226; &#127942; {t.record}: {taHighScore}</span>}
-          <span className="block mt-4 text-gray-300 dark:text-gray-700 font-mono">v7.3</span>
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-3 text-center relative w-full">
+          {taHighScore>0 && <span>&#127942; {t.record}: {taHighScore}</span>}
         </p>
       </div>
     );
